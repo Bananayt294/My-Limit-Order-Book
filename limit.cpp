@@ -45,6 +45,10 @@ void limit::setleftchild(limit* leftchild){
     this -> leftchild = leftchild;
 }
 
+void limit::setParent(limit* parent){
+    this -> parent = parent;
+}
+
 bool limit::getbuyorsell(){
     return buyorsell;
 }

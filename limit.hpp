@@ -20,6 +20,7 @@ class limit{
         limit(double _limit_price,double _size = 0 , bool _buyorsell,double _totalshares = 0);
         void setrightchild(limit* rightchild);
         void setleftchild(limit* leftchild);
+        void setParent(limit* parent);
         bool getbuyorsell();
         order* get_headOrder();
         order* get_tailOrder();

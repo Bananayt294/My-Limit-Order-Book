@@ -1,5 +1,8 @@
 #include "unordered_map"
+#include <vector>
+
 class limit;
+class order;
 
 class book{
     private:
@@ -17,10 +20,10 @@ class book{
     std::unordered_map<int, limit*> limitsell_map;
     std::unordered_map<int, limit*> stopmap;
 
-    void RL_rebalance(limit* Limit);
-    void RR_rebalance(limit* Limit);
-    void LR_rebalance(limit* Limit);
-    void LL_rebalance(limit* Limit);
+    limit* RL_rebalance(limit* Limit);
+    limit* RR_rebalance(limit* Limit);
+    limit* LR_rebalance(limit* Limit);
+    limit* LL_rebalance(limit* Limit);
     int get_b(limit* Limit);
 
     
@@ -32,7 +35,7 @@ class book{
     ~book();
     book();
 
-    void modifylimitorder(int idnumber,bool buyorsell,int Limit_price,int size,int shares);
+    void modifylimitorder(int idnumber,int newlimit,int newshares);
     void addLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice);
     void addStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice);
     void cancelLimitOrder(int orderId);
@@ -47,7 +50,7 @@ class book{
     void addStopOrder(int orderid , bool buyorsell , int shares , int stopPrice);
 
     
-    void balanceTree(limit* Limit);
+    limit* balanceTree(limit* Limit);
     void changeBookRoots(limit* Limit);
     int getRightSideHeight(limit* Limit);
     int getLeftSideHeight(limit* Limit);
@@ -58,11 +61,11 @@ class book{
 
     std::vector<int> PreorderTraversal(limit* root);
     void PreorderHelper(limit* root,std::vector<int>& result);
-    std::vector<int> InorderTraversal(limit *root);
+    std::vector<int> InorderTraversal(limit* root);
     std::vector<int> inOrderTreeHelper(limit* root,std::vector<int>& result);
     std::vector<int> PostorderTraversal(limit* root);
     void PostorderHelper(limit* root,std::vector<int>& result);
-
+    void stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell);
     
 
     int stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int stopPrice);
