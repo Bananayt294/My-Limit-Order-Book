@@ -105,14 +105,13 @@ void book::modifylimitorder(int idnumber,int newlimit,int newshares){
     }
 };
 
-int book::getLeftSideHeight(limit* Limit){
-    limit* ptr = Limit -> get_leftchild();
-    int count = 1;
-    while (ptr != nullptr){
-        ptr = ptr -> get_leftchild();
-        count++;
-    }
-    return count;
+int getLimitHeight(limit* node)
+{
+    if(node == nullptr)
+        return 0;
+
+    return 1 + std::max(getLimitHeight(node->get_leftchild()),
+                        getLimitHeight(node->get_rightchild()));
 }
 
 int book::getRightSideHeight(limit* Limit){
@@ -402,9 +401,9 @@ limit* book::balanceTree(limit* Limit){
 }
 
 int book::get_b(limit* Limit){
-    int left = getLeftSideHeight(Limit);
-    int right = getRightSideHeight(Limit);
-    int b_factor = std::max(left,right) + 1;
+    int left = getLeftSideHeight(Limit -> get_leftchild());
+    int right = getRightSideHeight(Limit -> get_rightchild());
+    int b_factor = (left - right);
     return b_factor;
 };
 
