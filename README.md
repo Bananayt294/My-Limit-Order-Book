@@ -4,7 +4,7 @@
 <br>
 <h2>It uses AVL trees for Limits for O(1) Lookup and has the orders in a linked list format.<h2>
 <h2>It also uses an Order Pool so that it dosent need to constantly create new objects when adding orders or have to delete objects when removing</h2>
-<h2>Might potentially switch to uint32 instead of pointers to avoid cache misses</h2>
+<h2>Might potentially switch to uint32 to avoid cache misses</h2>
 
 ## Refrences
 
