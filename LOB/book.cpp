@@ -33,7 +33,7 @@ book::~book() {
     stopmap.clear();
 }
 
-void book::addStopOrder(int orderid , bool buyorsell , int shares , int stopPrice){
+void book::AddStopOrder(int orderid , bool buyorsell , int shares , int stopPrice){
     int executedOrdersCount = 0;
     int AVLTreeBalanceCount = 0;
 
@@ -60,7 +60,7 @@ int book::stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int
     return shares;
 }
 
-void book::cancelStopOrder(int orderid){
+void book::CancelStopOrder(int orderid){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     order* Order = order_map.at(orderid);
@@ -74,7 +74,7 @@ void book::cancelStopOrder(int orderid){
     }
 }
 
-void book::modifyStopOrder(int orderid , bool buyorsell , int shares , int stopPrice){
+void book::ModifyStopOrder(int orderid , bool buyorsell , int shares , int stopPrice){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     order* Order = order_map.at(orderid);
@@ -91,7 +91,7 @@ void book::modifyStopOrder(int orderid , bool buyorsell , int shares , int stopP
     }
 }
 
-void book::modifylimitorder(int idnumber,int newlimit,int newshares){
+void book::ModifyLimitOrder(int idnumber,int newlimit,int newshares){
     auto& order = order_map.at(idnumber);
     if (order != nullptr){
         order -> cancel();
@@ -175,7 +175,7 @@ void book::updateBookEdgeInsert(limit* newlimit){
     };
 };
 //MUST UPDATE ADD LIMIT ORDER FUNCTION
-void book::addLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice)
+void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice)
 {
     auto AVLTreeBalanceCount = 0;
     // Account for order being executed immediately
@@ -201,12 +201,12 @@ void book::addLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice
     }
 }
 
-void book::addStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
+void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
 {
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     // Account for stop limit order being executed immediately
-    shares = stopLimitOrderAsLimitOrder(orderId, buyOrSell, shares, limitPrice, stopPrice);
+    shares = StopLimitOrderAsLimitOrder(orderId, buyOrSell, shares, limitPrice, stopPrice);
     
     if (shares != 0)
     {
@@ -245,11 +245,11 @@ void book::stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell)
     int orderId = stopLimitOrder->get_idNumber();
     int shares = stopLimitOrder->getshares();
     int limitPrice = stopLimitOrder->get_Limit();
-    cancelStopOrder(orderId);
-    addLimitOrder(orderId, buyOrSell, shares, limitPrice);
+    CancelStopOrder(orderId);
+    AddLimitOrder(orderId, buyOrSell, shares, limitPrice);
 };
 
-void book::cancelLimitOrder(int orderId)
+void book::CancelLimitOrder(int orderId)
 {
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
@@ -266,15 +266,15 @@ void book::cancelLimitOrder(int orderId)
     }
 }
 
-int book::stopLimitOrderAsLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
+int book::StopLimitOrderAsLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
 {
     if (buyOrSell && lowestsell != nullptr && stopPrice <= lowestsell->get_limitPrice())
     {
-        addLimitOrder(orderId, true, shares, limitPrice);
+        AddLimitOrder(orderId, true, shares, limitPrice);
         return 0;
     } else if (!buyOrSell && highestbuy != nullptr && stopPrice >= highestbuy->get_limitPrice())
     {
-        addLimitOrder(orderId, false, shares, limitPrice);
+        AddLimitOrder(orderId, false, shares, limitPrice);
         return 0;
     }
     return shares;
