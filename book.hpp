@@ -1,6 +1,7 @@
 #include "unordered_map"
 #include <vector>
 
+class order_pool;
 class limit;
 class order;
 
@@ -16,6 +17,7 @@ class book{
     limit* loweststopsell;
 
     std::unordered_map<int, order*> order_map;
+    order_pool* order_allocator;
     std::unordered_map<int, limit*> limitbuy_map;
     std::unordered_map<int, limit*> limitsell_map;
     std::unordered_map<int, limit*> stopmap;
@@ -24,8 +26,6 @@ class book{
     limit* RR_rebalance(limit* Limit);
     limit* LR_rebalance(limit* Limit);
     limit* LL_rebalance(limit* Limit);
-    int get_b(limit* Limit);
-
     
     public:
     limit* insert(limit* root, limit* newlimit,limit* parent = nullptr);
@@ -47,11 +47,12 @@ class book{
     void executeStopOrders(bool buyorsell);
 
     void MarketOrderHelper(int orderid , bool buyorsell , int shares);
-    void addStopOrder(int orderid , bool buyorsell , int shares , int stopPrice);
 
     
     limit* balanceTree(limit* Limit);
     void changeBookRoots(limit* Limit);
+    int getLimitHeight(limit* node);
+    int get_b(limit* Limit);
     int getRightSideHeight(limit* Limit);
     int getLeftSideHeight(limit* Limit);
  
@@ -70,7 +71,4 @@ class book{
 
     int stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int stopPrice);
     void stopOrderHelper(int orderid , bool buyorsell , int shares);
-
-    void cancelStopOrder(int orderid);
-    void modifyStopOrder(int orderid , bool buyorsell , int shares , int stopPrice);
 };

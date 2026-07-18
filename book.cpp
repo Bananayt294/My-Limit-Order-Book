@@ -1,17 +1,19 @@
 #include "limit.hpp"
 #include "book.hpp"
 #include "order.hpp"
+#include "order_pool.hpp"
 #include "iostream"
 #include <algorithm>
 #include <random>
 #include <iterator>
 #include <vector>
+#include "order_pool.hpp"
 
-book::book() : buytree{nullptr}, selltree{nullptr}, highestbuy{nullptr}, lowestsell{nullptr},stopbuytree{nullptr},stopselltree{nullptr} {};
+book::book() : buytree{nullptr}, selltree{nullptr}, highestbuy{nullptr}, lowestsell{nullptr}, stopbuytree{nullptr}, stopselltree{nullptr}, order_allocator{new order_pool()} {}
 
 book::~book() {
     for (auto& [id, order] : order_map) {
-        delete order;
+        order_allocator->release(order);
     }
     order_map.clear();
 
@@ -38,7 +40,7 @@ void book::addStopOrder(int orderid , bool buyorsell , int shares , int stopPric
     shares = stopOrderAsMarketOrder(orderid , buyorsell , shares , stopPrice);
 
     if (shares != 0){
-        order* neworder = new order(orderid , buyorsell , shares , 0);
+        order* neworder = order_allocator->allocate(orderid , buyorsell , shares , 0);
         order_map.emplace(orderid , neworder);
         if (stopmap.find(stopPrice) == stopmap.end()){
             addLimit(stopPrice , buyorsell);
@@ -68,7 +70,7 @@ void book::cancelStopOrder(int orderid){
             Order -> get_parent_limit() -> deleteLimit(Order -> get_parent_limit());
         }
         deleteFromOrderMap(Order);
-        delete Order;
+        order_allocator->release(Order);
     }
 }
 
@@ -105,7 +107,7 @@ void book::modifylimitorder(int idnumber,int newlimit,int newshares){
     }
 };
 
-int getLimitHeight(limit* node)
+int book::getLimitHeight(limit* node)
 {
     if(node == nullptr)
         return 0;
@@ -114,15 +116,19 @@ int getLimitHeight(limit* node)
                         getLimitHeight(node->get_rightchild()));
 }
 
+int book::getLeftSideHeight(limit* Limit){
+    if (Limit == nullptr){
+        return 0;
+    }
+    return getLimitHeight(Limit -> get_leftchild());
+}
+
 int book::getRightSideHeight(limit* Limit){
-    limit* ptr = Limit->get_rightchild();
-    int count = 1;
-    while (ptr != nullptr){
-        ptr = ptr -> get_rightchild();
-        count++;
-    };
-    return count;
-};
+    if (Limit == nullptr){
+        return 0;
+    }
+    return getLimitHeight(Limit -> get_rightchild());
+}
 
 limit* book::insert(limit* root , limit* newlimit , limit* parent){
     if (root == nullptr){
@@ -131,12 +137,12 @@ limit* book::insert(limit* root , limit* newlimit , limit* parent){
     }
     if (newlimit -> get_limitPrice() < root -> get_limitPrice()){
         root -> setleftchild(insert(root->get_leftchild() , newlimit , root));
-        root = balanceTree(root);
+
     }
     else if (newlimit -> get_limitPrice() > root -> get_limitPrice()){
         root -> setrightchild(insert(root->get_rightchild() , newlimit , root));
-        root = balanceTree(root);
     }
+    root = balanceTree(root);
     return root;
 }//fixed Insert
 
@@ -151,7 +157,7 @@ void book::addLimit(int limit_price , bool buyorsell){
     tree = newlimit;
     bookedge = newlimit;
    }else{
-    limit* root = insert(tree , newlimit);
+    limit* tree = insert(tree , newlimit);
     updateBookEdgeInsert(newlimit);
    }
 }
@@ -177,7 +183,7 @@ void book::addLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice
     
     if (shares != 0)
     {
-        order* newOrder = new order(orderId, buyOrSell, shares, limitPrice);
+        order* newOrder = order_allocator->allocate(orderId, buyOrSell, shares, limitPrice);
         order_map.emplace(orderId, newOrder);
 
         auto& limitMap = buyOrSell ? limitbuy_map : limitsell_map;
@@ -204,7 +210,7 @@ void book::addStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitP
     
     if (shares != 0)
     {
-        order* newOrder = new order(orderId, buyOrSell, shares, limitPrice);
+        order* newOrder = order_allocator->allocate(orderId, buyOrSell, shares, limitPrice);
         order_map.emplace(orderId, newOrder);
 
         if (stopmap.find(stopPrice) == stopmap.end())
@@ -256,7 +262,7 @@ void book::cancelLimitOrder(int orderId)
             Order->get_parent_limit()->deleteLimit(Order->get_parent_limit());
         }
         deleteFromOrderMap(Order);
-        delete Order;
+        order_allocator->release(Order);
     }
 }
 
@@ -318,7 +324,7 @@ void book::MarketOrderHelper(int orderid , bool buyorsell,int shares){
             bookedge -> deleteLimit(bookedge);   
         }
         deleteFromOrderMap(headorder);
-        delete headorder;
+        order_allocator->release(headorder);
         executedOrdersCount++;
 }   if (bookedge != nullptr && shares != 0){
     bookedge -> get_headOrder() -> partiallyFillOrder(shares);
@@ -386,75 +392,81 @@ limit* book::balanceTree(limit* Limit){
     int b_factor = get_b(Limit);
     if (b_factor > 1){
         if (get_b(Limit -> get_leftchild()) >= 0){
-            LL_rebalance(Limit);
+            return LL_rebalance(Limit);
         }else{
-            LR_rebalance(Limit);
+            return LR_rebalance(Limit);
         }
     }else if (b_factor < -1){
         if (get_b(Limit -> get_rightchild()) <= 0){
-            RR_rebalance(Limit);
+            return RR_rebalance(Limit);
         }else{
-            RL_rebalance(Limit);
+            return RL_rebalance(Limit);
         }
     }
     return Limit;
 }
 
 int book::get_b(limit* Limit){
-    int left = getLeftSideHeight(Limit -> get_leftchild());
-    int right = getRightSideHeight(Limit -> get_rightchild());
+    int left = getLeftSideHeight(Limit);
+    int right = getRightSideHeight(Limit);
     int b_factor = (left - right);
     return b_factor;
 };
 
 limit* book::LL_rebalance(limit* Limit){
     limit* newparent = Limit -> get_leftchild();
-    Limit -> setleftchild(newparent -> get_rightchild());
-    if (newparent -> get_rightchild() != nullptr){
-        newparent -> get_rightchild() -> setParent(Limit);
-    }
-    newparent -> setrightchild(Limit);
     if (Limit -> get_parent() != nullptr){
         newparent -> setParent(Limit -> get_parent());
-    } else {
+        if (Limit -> get_parent() -> get_leftchild() == Limit){
+            Limit -> get_parent() -> setleftchild(newparent);
+        }
+         else if (Limit -> get_parent() -> get_rightchild() == Limit){
+        Limit -> get_parent() -> setrightchild(newparent);
+        }
+    }else{
         newparent -> setParent(nullptr);
         auto& tree = Limit -> getbuyorsell() ? buytree : selltree;
         tree = newparent;
+    }if (newparent -> get_rightchild() != nullptr){
+        newparent -> get_rightchild() -> setParent(Limit);
     }
+    Limit -> setleftchild(newparent -> get_rightchild());
+    newparent -> setrightchild(Limit);
     Limit -> setParent(newparent);
     return newparent;
 };//fixed rebalance
 limit* book::RR_rebalance(limit* Limit){
     limit* newparent = Limit -> get_rightchild();
-    Limit -> setrightchild(newparent -> get_leftchild());
-    if (newparent -> get_leftchild() != nullptr){
-        newparent -> get_leftchild() -> setParent(Limit);
-    }
-    newparent -> setleftchild(Limit);
     if (Limit -> get_parent() != nullptr){
         newparent -> setParent(Limit -> get_parent());
-    } else {
+        if (Limit -> get_parent() -> get_leftchild() == Limit){
+            Limit -> get_parent() -> setleftchild(newparent);
+        }
+         else if (Limit -> get_parent() -> get_rightchild() == Limit){
+            Limit -> get_parent() -> setrightchild(newparent);
+        }
+    }else{
         newparent -> setParent(nullptr);
         auto& tree = Limit -> getbuyorsell() ? buytree : selltree;
         tree = newparent;
     }
+    Limit -> setrightchild(newparent -> get_leftchild());
+    if (newparent -> get_leftchild() != nullptr){
+        newparent -> get_leftchild() -> setParent(Limit);
+    }
+    
+    newparent -> setleftchild(Limit);
     Limit -> setParent(newparent);
     return newparent;
 }//fixed rebalance
 
 limit* book::LR_rebalance(limit* Limit){
-    limit* newparent = Limit -> get_leftchild() -> get_rightchild();
-    limit* temp = Limit -> get_leftchild();
-    Limit -> setleftchild(newparent);
-    newparent -> setleftchild(temp);
+    RR_rebalance(Limit -> get_leftchild());
     return LL_rebalance(Limit);
 }
 
 limit* book::RL_rebalance(limit* Limit){
-    limit* newparent = Limit -> get_rightchild() -> get_leftchild();
-    limit* temp = Limit -> get_rightchild();
-    Limit -> setleftchild(newparent);
-    newparent -> setleftchild(temp);
+    LL_rebalance(Limit -> get_rightchild());
     return RR_rebalance(Limit);
 }
 

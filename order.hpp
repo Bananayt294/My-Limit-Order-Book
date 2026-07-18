@@ -17,6 +17,7 @@ class order{
         void setShares(int shares);
         void setSize(int size);
         order(int _idnumber , bool buyorsell , int shares, int limit);
+        ~order();
         int get_Limit();
         int getshares();
         bool get_buyorsell();
