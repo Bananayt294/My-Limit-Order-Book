@@ -1,5 +1,7 @@
+#ifndef ORDER_POOL_HPP
+#define ORDER_POOL_HPP
+
 #include "order.hpp"
-#include "order.cpp"
 #include <vector>
 class order_pool {
     private:
@@ -14,3 +16,5 @@ class order_pool {
     void release (order* order_ptr);
     size_t available() const;
 };
+
+#endif

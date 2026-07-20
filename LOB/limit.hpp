@@ -1,5 +1,8 @@
 
 
+#ifndef LIMIT_HPP
+#define LIMIT_HPP
+
 class order;
 
 class limit{
@@ -15,9 +18,10 @@ class limit{
         bool buyorsell;
         
         friend class order;
+
     public:
         void deleteLimit(limit* Limit);
-        limit(double _limit_price,double _size = 0 , bool _buyorsell,double _totalshares = 0);
+        limit(int _limit_price, int _size = 0, bool _buyorsell = false, int _totalshares = 0);
         void setrightchild(limit* rightchild);
         void setleftchild(limit* leftchild);
         void setParent(limit* parent);
@@ -33,3 +37,5 @@ class limit{
         void order_append(order* order);
         void partiallyFillTotalVolume(int orderedShares);
 };
+
+#endif

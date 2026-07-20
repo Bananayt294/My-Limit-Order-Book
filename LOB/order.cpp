@@ -2,7 +2,7 @@
 #include "order.hpp"
 
 order::order(int _idnumber , bool buyorsell , int shares, int limit)
-: idnumber{_idnumber}, buyorsell{buyorsell}, shares{shares}, Limit{limit}, parent_limit{nullptr}, prevOrder{nullptr}, nextOrder{nullptr}{};
+    : idnumber{_idnumber}, buyorsell{buyorsell}, shares{shares}, Limit{limit}, parent_limit{nullptr}, prevOrder{nullptr}, nextOrder{nullptr} {}
 
 order::~order() = default;
 
@@ -72,8 +72,4 @@ void order::modifyorder(int newshares , int newlimit){
 void order::partiallyFillOrder(int Orderedshares){
     this -> shares -= Orderedshares;
     parent_limit -> partiallyFillTotalVolume(Orderedshares);
-}
-
-bool order::get_buyorsell(){
-    return buyorsell;
 }

@@ -1,9 +1,9 @@
 #include "order.hpp"
 #include "limit.hpp"
 
-limit::limit(double _limit_price,double _size, bool _buyorsell,double _totalshares) 
-: limit_price{_limit_price},size{_size},buyorsell{_buyorsell},totalshares{_totalshares},
-parent{nullptr},rightchild{nullptr},leftchild{nullptr},tailOrder{nullptr},headOrder{nullptr}{};
+limit::limit(int _limit_price, int _size, bool _buyorsell, int _totalshares)
+    : tailOrder{nullptr}, headOrder{nullptr}, size{_size}, limit_price{_limit_price}, totalshares{_totalshares},
+      leftchild{nullptr}, rightchild{nullptr}, parent{nullptr}, buyorsell{_buyorsell} {}
 
 void limit::deleteLimit(limit* Limit){
     delete Limit;

@@ -1,5 +1,8 @@
-#include "unordered_map"
+#ifndef BOOK_HPP
+#define BOOK_HPP
+
 #include <random>
+#include <unordered_map>
 #include <vector>
 
 class order_pool;
@@ -36,20 +39,19 @@ class book{
     ~book();
     book();
 
-    void modifylimitorder(int idnumber,int newlimit,int newshares);
+    void ModifyLimitOrder(int orderId, int newShares, int newLimit);
     void marketOrder(int orderId, bool buyOrSell, int shares);
-    void addLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice);
-    void addStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice);
-    void cancelLimitOrder(int orderId);
-    void modifyLimitOrder(int orderId, int newShares, int newLimit);
+    void AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice);
+    void AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice);
+    void CancelLimitOrder(int orderId);
     int LimitOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int limit_price);
-    int stopLimitOrderAsLimitOrder(int orderid , bool buyorsell , int shares , int limit_price , int stop_price);
-    void addStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
-    void modifyStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
-    void modifyStopOrder(int orderId, int newShares, int newStopPrice);
-    void cancelStopOrder(int orderid);
-    void cancelStopLimitOrder(int orderId);
-    void modifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice);
+    int StopLimitOrderAsLimitOrder(int orderid , bool buyorsell , int shares , int limit_price , int stop_price);
+    void AddStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
+    void ModifyStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
+    void ModifyStopOrder(int orderId, int newShares, int newStopPrice);
+    void CancelStopOrder(int orderid);
+    void CancelStopLimitOrder(int orderId);
+    void ModifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice);
     void executeStopOrders(bool buyorsell);
 
     void MarketOrderHelper(int orderid , bool buyorsell , int shares);
@@ -83,3 +85,5 @@ class book{
     int stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int stopPrice);
     void stopOrderHelper(int orderid , bool buyorsell , int shares);
 };
+
+#endif

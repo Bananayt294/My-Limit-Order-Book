@@ -49,6 +49,20 @@ void book::AddStopOrder(int orderid , bool buyorsell , int shares , int stopPric
     }
 }
 
+void book::CancelStopLimitOrder(int orderId){
+    auto executedOrdersCount = 0;
+    auto AVLTreeBalanceCount = 0;
+    order* Order = order_map.at(orderId);
+    if (Order != nullptr){
+        Order -> cancel();
+        if (Order -> get_parent_limit() -> get_size() == 0){
+            Order -> get_parent_limit() -> deleteLimit(Order -> get_parent_limit());
+        }
+        deleteFromOrderMap(Order);
+        order_allocator->release(Order);
+    };
+};
+
 int book::stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int stopPrice){
     if (buyorsell && lowestsell != nullptr && stopPrice <= lowestsell -> get_limitPrice()){
         MarketOrderHelper(orderid , buyorsell , shares);
@@ -74,6 +88,23 @@ void book::CancelStopOrder(int orderid){
     }
 }
 
+void book::ModifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice){
+    auto executedOrdersCount = 0;
+    auto AVLTreeBalanceCount = 0;
+    order* Order = order_map.at(orderId);
+    if (Order != nullptr){
+        Order -> cancel();
+        if (Order -> get_parent_limit() -> get_size() == 0){
+            Order -> get_parent_limit() -> deleteLimit(Order -> get_parent_limit());
+        }
+        Order -> modifyorder(newShares , newLimitPrice);
+        if (stopmap.find(newStopPrice) == stopmap.end()){
+            addLimit(newStopPrice , Order -> get_buyorsell());
+        }
+        stopmap.at(newStopPrice) -> order_append(Order);
+    }
+}
+
 void book::ModifyStopOrder(int orderid , bool buyorsell , int shares , int stopPrice){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
@@ -91,21 +122,31 @@ void book::ModifyStopOrder(int orderid , bool buyorsell , int shares , int stopP
     }
 }
 
-void book::ModifyLimitOrder(int idnumber,int newlimit,int newshares){
-    auto& order = order_map.at(idnumber);
+void book::ModifyLimitOrder(int orderId, int newShares, int newLimit){
+    auto& order = order_map.at(orderId);
     if (order != nullptr){
         order -> cancel();
         if (order -> get_parent_limit() -> get_size() == 0){
             order -> get_parent_limit() -> deleteLimit(order -> get_parent_limit());
         }
         auto& limit_map = order -> get_buyorsell() ? limitbuy_map : limitsell_map;
-        order -> modifyorder(newshares , newlimit);
-        if (limit_map.find(newlimit) == limit_map.end()){
-            addLimit(newlimit , order -> get_buyorsell());
+        order -> modifyorder(newShares , newLimit);
+        if (limit_map.find(newLimit) == limit_map.end()){
+            addLimit(newLimit , order -> get_buyorsell());
         }
-        limit_map.at(newlimit) -> order_append(order);
+        limit_map.at(newLimit) -> order_append(order);
     }
 };
+
+limit* book::getLowestSell() const{
+    return lowestsell;
+}
+
+limit* book::getHighestBuy() const{
+    return highestbuy;
+}
+
+
 
 int book::getLimitHeight(limit* node)
 {

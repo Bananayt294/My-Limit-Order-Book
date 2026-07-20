@@ -1,3 +1,6 @@
+#ifndef ORDER_HPP
+#define ORDER_HPP
+
 class limit;
 
 class order{
@@ -28,3 +31,5 @@ class order{
         void execute();
         void modifyorder(int newshares,int newlimit);
 };
+
+#endif
