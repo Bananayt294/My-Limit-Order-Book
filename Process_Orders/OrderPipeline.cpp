@@ -1,5 +1,5 @@
-#include "OrderPipeline.hpp"
-#include "../book.hpp"
+#include "../Process_Orders/OrderPipeline.hpp"
+#include "../LOB/book.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -78,57 +78,57 @@ void OrderPipeline::processAddLimitOrder(std::istringstream& iss) {
     int orderId, shares, limitPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> shares >> limitPrice;
-    m_book->addLimitOrder(orderId, buyOrSell, shares, limitPrice);
+    m_book->AddLimitOrder(orderId, buyOrSell, shares, limitPrice);
 }
 
 void OrderPipeline::processCancelLimitOrder(std::istringstream& iss) {
     int orderId;
     iss >> orderId;
-    m_book->cancelLimitOrder(orderId);
+    m_book->CancelLimitOrder(orderId);
 }
 
 void OrderPipeline::processModifyLimitOrder(std::istringstream& iss) {
     int orderId, newShares, newLimit;
     iss >> orderId >> newShares >> newLimit;
-    m_book->modifylimitorder(orderId, newLimit, newShares);
+    m_book->ModifyLimitOrder(orderId, newShares, newLimit);
 }
 
 void OrderPipeline::processAddStopOrder(std::istringstream& iss) {
     int orderId, shares, stopPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> shares >> stopPrice;
-    m_book->addStopOrder(orderId, buyOrSell, shares, stopPrice);
+    m_book->AddStopOrder(orderId, buyOrSell, shares, stopPrice);
 }
 
 void OrderPipeline::processCancelStopOrder(std::istringstream& iss) {
     int orderId;
     iss >> orderId;
-    m_book->cancelStopOrder(orderId);
+    m_book->CancelStopOrder(orderId);
 }
 
 void OrderPipeline::processModifyStopOrder(std::istringstream& iss) {
     int orderId, newShares, newStopPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> newShares >> newStopPrice;
-    m_book->modifyStopOrder(orderId, buyOrSell, newShares, newStopPrice);
+    m_book->ModifyStopOrder(orderId, buyOrSell, newShares, newStopPrice);
 }
 
 void OrderPipeline::processAddStopLimitOrder(std::istringstream& iss) {
     int orderId, shares, limitPrice, stopPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> shares >> stopPrice >> limitPrice;
-    m_book->addStopLimitOrder(orderId, buyOrSell, shares, limitPrice, stopPrice);
+    m_book->AddStopLimitOrder(orderId, buyOrSell, shares, limitPrice, stopPrice);
 }
 
 void OrderPipeline::processCancelStopLimitOrder(std::istringstream& iss) {
     int orderId;
     iss >> orderId;
-    m_book->cancelStopOrder(orderId);
+    m_book->CancelStopLimitOrder(orderId);
 }
 
 void OrderPipeline::processModifyStopLimitOrder(std::istringstream& iss) {
     int orderId, newShares, newStopPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> newShares >> newStopPrice;
-    m_book->modifyStopOrder(orderId, buyOrSell, newShares, newStopPrice);
+    m_book->ModifyStopLimitOrder(orderId, buyOrSell, newShares, newStopPrice);
 }

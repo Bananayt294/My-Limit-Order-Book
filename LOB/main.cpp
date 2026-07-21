@@ -16,7 +16,7 @@ int main() {
 
     // generateOrders.createInitialOrders(10000, 300);
 
-    orderPipeline.processOrdersFromFile("./initialOrders.txt");
+    //orderPipeline.processOrdersFromFile("./initialOrders.txt");
 
     // generateOrders.createOrders(5000000);
 
@@ -24,7 +24,7 @@ int main() {
     // Start measuring time
     auto start = std::chrono::high_resolution_clock::now();
 
-    orderPipeline.processOrdersFromFile("./initialOrders.txt");
+    orderPipeline.processOrdersFromFile("D:\\C++\\Workspaces\\My LOB\\Generate_Orders\\initialOrders.txt");
 
     // Stop measuring time
     auto stop = std::chrono::high_resolution_clock::now();
