@@ -79,9 +79,10 @@ void book::CancelStopOrder(int orderid){
     auto AVLTreeBalanceCount = 0;
     order* Order = order_map.at(orderid);
     if (Order != nullptr){
+        limit* parentLimit= Order->get_parent_limit();
         Order -> cancel();
-        if (Order -> get_parent_limit() -> get_size() == 0){
-            Order -> get_parent_limit() -> deleteLimit(Order -> get_parent_limit());
+        if (parentLimit -> get_size() == 0){
+            parentLimit -> deleteLimit(parentLimit);
         }
         deleteFromOrderMap(Order);
         order_allocator->release(Order);
@@ -192,13 +193,13 @@ void book::addLimit(int limit_price , bool buyorsell){
     auto& tree = buyorsell ? buytree : selltree;
     auto& bookedge = buyorsell ? highestbuy : lowestsell;
 
-   limit* newlimit = new limit(limit_price , buyorsell);
+   limit* newlimit = new limit(limit_price , 0 ,buyorsell , 0);
    Limitmap.emplace(limit_price , newlimit);
    if (tree == nullptr){
     tree = newlimit;
     bookedge = newlimit;
    }else{
-    limit* tree = insert(tree , newlimit);
+    tree = insert(tree , newlimit);
     updateBookEdgeInsert(newlimit);
    }
 }
@@ -206,12 +207,22 @@ void book::addLimit(int limit_price , bool buyorsell){
 void book::updateBookEdgeInsert(limit* newlimit){
     auto& tree = newlimit -> getbuyorsell() ? buytree : selltree;
     if(tree == buytree){
+        if (highestbuy == nullptr){
+            highestbuy = newlimit;
+            return;
+        }
         if(newlimit -> get_limitPrice() > highestbuy -> get_limitPrice()){
             highestbuy = newlimit;
         }
-    }else if (tree == selltree){
-        if(newlimit -> get_limitPrice() < lowestsell -> get_limitPrice()){
+    }else{ 
+        if (lowestsell == nullptr){
             lowestsell = newlimit;
+            return;
+        }
+        if (tree == selltree){
+            if(newlimit -> get_limitPrice() < lowestsell -> get_limitPrice()){
+                lowestsell = newlimit;
+            };
         };
     };
 };
@@ -240,6 +251,101 @@ void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice
     {
         executeStopOrders(buyOrSell);
     }
+}
+
+void book::deleteLimit(limit* Limit)
+{
+    auto& map = Limit->getbuyorsell() ? limitbuy_map : limitsell_map;
+
+    map.erase(Limit->get_limitPrice());
+
+    if (Limit == highestbuy)
+        highestbuy = nullptr;
+
+    if (Limit == lowestsell)
+        lowestsell = nullptr;
+
+    // IMPORTANT! remove from AVL tree here MUST BE IMPLEMENTED
+
+
+    delete Limit;
+};
+
+//MUST implement DELETENODE FUNCTION
+limit* deleteNode(limit* root , int limitprice){
+if (limitprice < root->get_limitPrice()){
+  root =  deleteNode(root -> get_leftchild() , limitprice);
+}
+else if (limitprice > root->get_limitPrice()){
+  root =  deleteNode(root -> get_rightchild() , limitprice);
+}
+else{
+    limit* parent = root -> get_parent();
+    if (root -> get_leftchild() == nullptr && root -> get_rightchild() == nullptr){
+        if (parent != nullptr){
+            if (parent -> get_leftchild() == root){
+                parent -> setleftchild(nullptr);
+                root -> setParent(nullptr);
+            }else{
+                parent -> setrightchild(nullptr);
+                root -> setParent(nullptr);
+            }
+        }
+        delete root;
+}
+    if (root -> get_leftchild() != nullptr && root -> get_rightchild() == nullptr){
+        
+        if (parent != nullptr){
+            if (parent -> get_leftchild() == root){
+                parent -> setleftchild(root -> get_leftchild());
+                root -> get_leftchild() -> setParent(parent);
+                // must make roots children nullptr
+                root -> setleftchild(nullptr);
+                root -> setParent(nullptr);
+            }else{
+                parent -> setrightchild(root -> get_leftchild());
+                root -> get_leftchild() -> setParent(parent);
+                root -> setParent(nullptr);
+                root -> setleftchild(nullptr);
+                //must make roots children nullptr
+            }
+        }
+        delete root;
+    }
+    if (root -> get_leftchild() == nullptr && root -> get_rightchild() != nullptr){
+        
+        if (parent != nullptr){
+            if (parent -> get_leftchild() == root){
+                parent -> setleftchild(root -> get_rightchild());
+                root -> get_rightchild() -> setParent(parent);
+                root -> setParent(nullptr); 
+                root -> setrightchild(nullptr);
+            }else{
+                parent -> setrightchild(root -> get_rightchild());
+                root -> get_rightchild() -> setParent(parent);
+                root -> setParent(nullptr);
+                root -> setrightchild(nullptr);
+            }
+    }
+    delete root;
+}
+
+    if (root -> get_leftchild() != nullptr && root -> get_rightchild() != nullptr){
+
+        if (parent != nullptr){
+           if (parent -> get_rightchild() == root){
+                parent -> setrightchild(root -> get_rightchild());
+                root -> get_rightchild() -> setParent(parent);
+                root -> get_leftchild() -> setParent(root -> get_rightchild());
+                root -> get_rightchild() -> setleftchild(root -> get_leftchild());
+                root -> setrightchild(nullptr);
+                root -> setleftchild(nullptr);
+                root -> setParent(nullptr);
+            }
+            delete root;
+        }
+    }
+};
 }
 
 void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)

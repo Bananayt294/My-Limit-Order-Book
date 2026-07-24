@@ -53,7 +53,6 @@ void order::cancel(){
   parent_limit -> size -= 1;
   prevOrder = nullptr;
   nextOrder = nullptr;
-  parent_limit = nullptr;
 }
 
 void order::execute(){

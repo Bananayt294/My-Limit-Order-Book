@@ -8,7 +8,7 @@
 #include <chrono>
 
 int main() {
-    Book* book = new Book();
+    Book* book = new Book();  
 
     OrderPipeline orderPipeline(book);
 
