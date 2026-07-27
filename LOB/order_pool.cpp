@@ -22,9 +22,8 @@ order* order_pool::allocate(int idnumber, bool buyorsell, int shares, int limit)
 
 void order_pool::release(order* order_ptr) {
     if (order_ptr == nullptr) {
-        return;
+        return;  
     }
-
     const auto* byte_ptr = reinterpret_cast<const char*>(order_ptr);
     const auto* memory_begin = reinterpret_cast<const char*>(memory);
     const auto* memory_end = memory_begin + sizeof(memory);

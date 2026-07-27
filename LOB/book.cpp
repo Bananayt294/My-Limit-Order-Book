@@ -253,8 +253,8 @@ void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice
     }
 }
 
-void book::deleteLimit(limit* Limit)
-{
+void book::deleteLimit(limit* Limit){
+    auto& tree = Limit->getbuyorsell() ? buytree : selltree;
     auto& map = Limit->getbuyorsell() ? limitbuy_map : limitsell_map;
 
     map.erase(Limit->get_limitPrice());
@@ -266,22 +266,28 @@ void book::deleteLimit(limit* Limit)
         lowestsell = nullptr;
 
     // IMPORTANT! remove from AVL tree here MUST BE IMPLEMENTED
+    tree = deleteNode(tree, Limit->get_limitPrice());
 
-
-    delete Limit;
 };
 
 //MUST implement DELETENODE FUNCTION
-limit* deleteNode(limit* root , int limitprice){
+limit* book::deleteNode(limit* root , int limitprice){
+
+if (root == nullptr){
+        return nullptr;
+}
+
 if (limitprice < root->get_limitPrice()){
-  root =  deleteNode(root -> get_leftchild() , limitprice);
+  root -> setleftchild(deleteNode(root -> get_leftchild() , limitprice));
 }
 else if (limitprice > root->get_limitPrice()){
-  root =  deleteNode(root -> get_rightchild() , limitprice);
+  root -> setrightchild(deleteNode(root -> get_rightchild() , limitprice)); //recurse until root == limitprice
 }
 else{
+    limit* RootRightChild = root -> get_rightchild();
+    limit* RootLeftChild = root -> get_leftchild();
     limit* parent = root -> get_parent();
-    if (root -> get_leftchild() == nullptr && root -> get_rightchild() == nullptr){
+    if (RootLeftChild == nullptr && RootRightChild == nullptr){
         if (parent != nullptr){
             if (parent -> get_leftchild() == root){
                 parent -> setleftchild(nullptr);
@@ -292,61 +298,110 @@ else{
             }
         }
         delete root;
+        return nullptr;
 }
-    if (root -> get_leftchild() != nullptr && root -> get_rightchild() == nullptr){
+    if (RootLeftChild != nullptr && RootRightChild == nullptr){
         
         if (parent != nullptr){
             if (parent -> get_leftchild() == root){
-                parent -> setleftchild(root -> get_leftchild());
-                root -> get_leftchild() -> setParent(parent);
+                parent -> setleftchild(RootLeftChild);
+                RootLeftChild -> setParent(parent);
                 // must make roots children nullptr
                 root -> setleftchild(nullptr);
                 root -> setParent(nullptr);
             }else{
-                parent -> setrightchild(root -> get_leftchild());
-                root -> get_leftchild() -> setParent(parent);
+                parent -> setrightchild(RootLeftChild);
+                RootLeftChild -> setParent(parent);
                 root -> setParent(nullptr);
                 root -> setleftchild(nullptr);
                 //must make roots children nullptr
             }
         }
         delete root;
+        return RootLeftChild;   
     }
-    if (root -> get_leftchild() == nullptr && root -> get_rightchild() != nullptr){
+    if (RootLeftChild == nullptr && RootRightChild != nullptr){
         
         if (parent != nullptr){
             if (parent -> get_leftchild() == root){
-                parent -> setleftchild(root -> get_rightchild());
-                root -> get_rightchild() -> setParent(parent);
+                parent -> setleftchild(RootRightChild);
+                RootRightChild -> setParent(parent);
                 root -> setParent(nullptr); 
                 root -> setrightchild(nullptr);
             }else{
-                parent -> setrightchild(root -> get_rightchild());
-                root -> get_rightchild() -> setParent(parent);
+                parent -> setrightchild(RootRightChild);
+                RootRightChild -> setParent(parent);
                 root -> setParent(nullptr);
                 root -> setrightchild(nullptr);
             }
     }
     delete root;
+    return RootRightChild;
 }
+if (RootLeftChild != nullptr && RootRightChild != nullptr)
+{
+    limit* successor = RootRightChild;
 
-    if (root -> get_leftchild() != nullptr && root -> get_rightchild() != nullptr){
-
-        if (parent != nullptr){
-           if (parent -> get_rightchild() == root){
-                parent -> setrightchild(root -> get_rightchild());
-                root -> get_rightchild() -> setParent(parent);
-                root -> get_leftchild() -> setParent(root -> get_rightchild());
-                root -> get_rightchild() -> setleftchild(root -> get_leftchild());
-                root -> setrightchild(nullptr);
-                root -> setleftchild(nullptr);
-                root -> setParent(nullptr);
-            }
-            delete root;
-        }
+    // Find inorder successor
+    while (successor->get_leftchild() != nullptr){
+        successor = successor->get_leftchild();
     }
+
+    limit* successorParent = successor->get_parent();
+
+
+    // Successor is not direct right child
+    if (successor != RootRightChild){
+        successorParent->setleftchild(successor->get_rightchild());
+
+        if (successor->get_rightchild() != nullptr)
+            successor->get_rightchild()->setParent(successorParent);
+
+        successor->setrightchild(RootRightChild);
+        RootRightChild->setParent(successor);
+    }
+
+
+    // Give successor the left subtree
+    successor->setleftchild(RootLeftChild);
+    RootLeftChild->setParent(successor);
+
+
+    // Connect successor to parent
+    if (parent == nullptr)
+    {
+        // deleting AVL root
+        successor->setParent(nullptr);
+
+        if (successor->getbuyorsell()){
+            buytree = successor;
+        }
+        else{
+            selltree = successor;
+    }   }
+    else
+    {
+        successor->setParent(parent);
+
+        if (parent->get_leftchild() == root){
+            parent->setleftchild(successor);
+        }
+        else{
+            parent->setrightchild(successor);
+    }   }
+
+
+    // Remove old root
+    root->setleftchild(nullptr);
+    root->setrightchild(nullptr);
+    root->setParent(nullptr);
+
+    delete root;
+
+    return balanceTree(successor);
 };
-}
+};
+};
 
 void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
 {
@@ -355,13 +410,11 @@ void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitP
     // Account for stop limit order being executed immediately
     shares = StopLimitOrderAsLimitOrder(orderId, buyOrSell, shares, limitPrice, stopPrice);
     
-    if (shares != 0)
-    {
+    if (shares != 0){
         order* newOrder = order_allocator->allocate(orderId, buyOrSell, shares, limitPrice);
         order_map.emplace(orderId, newOrder);
 
-        if (stopmap.find(stopPrice) == stopmap.end())
-        {
+        if (stopmap.find(stopPrice) == stopmap.end()){
             addLimit(stopPrice, newOrder->get_buyorsell());
         }
         stopmap.at(stopPrice)->order_append(newOrder);
@@ -372,16 +425,13 @@ void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitP
 void book::executeStopOrders(bool buyOrSell)
 {
     auto& bookEdge = buyOrSell ? lowestsell : highestbuy;
-    while (bookEdge != nullptr)
-    {
+    while (bookEdge != nullptr){
         order* headOrder = bookEdge->get_headOrder();
-        if (headOrder->get_buyorsell() == buyOrSell)
-        {
+        if (headOrder->get_buyorsell() == buyOrSell){
             // stopLimitOrders.erase(headOrder);
             stopLimitOrderToLimitOrder(headOrder, buyOrSell);
         }
-        else
-        {
+        else{
             break;
         }
     }

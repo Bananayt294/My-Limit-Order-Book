@@ -39,6 +39,7 @@ class book{
     ~book();
     book();
 
+    limit* deleteNode(limit* root, int limitPrice);
     void ModifyLimitOrder(int orderId, int newShares, int newLimit);
     void marketOrder(int orderId, bool buyOrSell, int shares);
     void AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice);
@@ -53,6 +54,7 @@ class book{
     void CancelStopLimitOrder(int orderId);
     void ModifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice);
     void executeStopOrders(bool buyorsell);
+    void deleteLimit(limit* Limit);
 
     void MarketOrderHelper(int orderid , bool buyorsell , int shares);
     limit* getLowestSell() const;

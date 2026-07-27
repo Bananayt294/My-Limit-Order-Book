@@ -5,10 +5,6 @@ limit::limit(int _limit_price, int _size, bool _buyorsell, int _totalshares)
     : tailOrder{nullptr}, headOrder{nullptr}, size{_size}, limit_price{_limit_price}, totalshares{_totalshares},
       leftchild{nullptr}, rightchild{nullptr}, parent{nullptr}, buyorsell{_buyorsell} {}
 
-void limit::deleteLimit(limit* Limit){
-    delete Limit;
-}
-
 order* limit::get_headOrder(){
     return headOrder;
 }
