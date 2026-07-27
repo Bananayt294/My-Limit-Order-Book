@@ -110,7 +110,7 @@ void OrderPipeline::processModifyStopOrder(std::istringstream& iss) {
     int orderId, newShares, newStopPrice;
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> newShares >> newStopPrice;
-    m_book->ModifyStopOrder(orderId, buyOrSell, newShares, newStopPrice);
+    m_book->ModifyStopOrder(orderId , newShares, newStopPrice);
 }
 
 void OrderPipeline::processAddStopLimitOrder(std::istringstream& iss) {

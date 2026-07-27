@@ -4,6 +4,7 @@
 #include <random>
 #include <unordered_map>
 #include <vector>
+#include <unordered_set>
 
 class order_pool;
 class limit;
@@ -47,21 +48,26 @@ class book{
     void CancelLimitOrder(int orderId);
     int LimitOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int limit_price);
     int StopLimitOrderAsLimitOrder(int orderid , bool buyorsell , int shares , int limit_price , int stop_price);
-    void AddStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
-    void ModifyStopOrder(int orderid , bool buyorsell , int shares , int stop_price);
-    void ModifyStopOrder(int orderId, int newShares, int newStopPrice);
+    void AddStopOrder(int orderid , bool buyorsell, int shares , int stop_price);
+    void ModifyStopOrder(int orderid, int newshares, int stopPrice);
     void CancelStopOrder(int orderid);
     void CancelStopLimitOrder(int orderId);
     void ModifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice);
     void executeStopOrders(bool buyorsell);
     void deleteLimit(limit* Limit);
 
+    void MarketOrder(int orderid , bool buyorsell , int shares);
     void MarketOrderHelper(int orderid , bool buyorsell , int shares);
     limit* getLowestSell() const;
     limit* getHighestBuy() const;
     limit* getHighestStopSell() const;
     limit* getLowestStopBuy() const;
     order* getRandomOrder(int key, std::mt19937 gen) const;
+
+    std::unordered_set<order*> limitOrders;
+    std::unordered_set<order*> stopOrders;
+    std::unordered_set<order*> stopLimitOrders;
+
 
     
     limit* balanceTree(limit* Limit);
