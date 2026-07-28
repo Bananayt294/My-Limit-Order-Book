@@ -1,5 +1,13 @@
 # My-Limit-Order-Book
 
+# Architecture
+<br>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/brprojects/Limit-Order-Book/main/figures/architecture.png" alt="Limit Order Book Architecture (credit to brprojects)" width="900"/>
+</p>
+
+
+
 # Limit Order Book
 
 A high-performance C++20 Limit Order Book implementing price-time priority (FIFO) matching using an AVL tree for price levels and a custom memory pool for order allocation.
