@@ -1,6 +1,6 @@
 # My-Limit-Order-Book
 
-# Architecture
+# Architecture (HUGE CREDIT TO BRPROJECTS FOR INSPIRATION)
 <br>
 <p align="center">
   <img src="https://raw.githubusercontent.com/brprojects/Limit-Order-Book/main/figures/architecture.png" alt="Limit Order Book Architecture (credit to brprojects)" width="900"/>
