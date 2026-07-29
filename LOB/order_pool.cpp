@@ -2,14 +2,14 @@
 #include <cstdint>
 #include <new>
 
-order_pool::order_pool() : slot_in_use(MAX_ORDERS, 0) {
+order_pool::order_pool() : slot_in_use(MAX_ORDERS, 0){
     free_indices.reserve(MAX_ORDERS);
     for (size_t i = 0; i < MAX_ORDERS; i++) {
         free_indices.push_back(i);
     }
 }
 
-order* order_pool::allocate(int idnumber, bool buyorsell, int shares, int limit) {
+order* order_pool::allocate(int idnumber, bool buyorsell, int shares, int limit){
     if (free_indices.empty()) {
         return nullptr; // No more orders available
     }
@@ -20,7 +20,7 @@ order* order_pool::allocate(int idnumber, bool buyorsell, int shares, int limit)
     return new (memory + index * sizeof(order)) order(idnumber, buyorsell, shares, limit);
 }
 
-void order_pool::release(order* order_ptr) {
+void order_pool::release(order* order_ptr){
     if (order_ptr == nullptr) {
         return;  
     }
@@ -47,6 +47,6 @@ void order_pool::release(order* order_ptr) {
     free_indices.push_back(index);
 }
 
-size_t order_pool::available() const {
+size_t order_pool::available() const{
     return free_indices.size();
 };

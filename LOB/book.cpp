@@ -150,8 +150,7 @@ limit* book::getHighestBuy() const{
 
 
 
-int book::getLimitHeight(limit* node)
-{
+int book::getLimitHeight(limit* node){
     if(node == nullptr)
         return 0;
 
@@ -228,8 +227,7 @@ void book::updateBookEdgeInsert(limit* newlimit){
     };
 };
 //MUST UPDATE ADD LIMIT ORDER FUNCTION
-void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice)
-{
+void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice){
     auto AVLTreeBalanceCount = 0;
     // Account for order being executed immediately
     shares = LimitOrderAsMarketOrder(orderId, buyOrSell, shares, limitPrice);
@@ -403,8 +401,7 @@ if (RootLeftChild != nullptr && RootRightChild != nullptr){
 };
 };
 
-void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
-{
+void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     // Account for stop limit order being executed immediately
@@ -423,8 +420,7 @@ void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitP
     }
 }
 
-void book::executeStopOrders(bool buyOrSell)
-{
+void book::executeStopOrders(bool buyOrSell){
     auto& bookEdge = buyOrSell ? lowestsell : highestbuy;
     while (bookEdge != nullptr){
         order* headOrder = bookEdge->get_headOrder();
@@ -438,8 +434,7 @@ void book::executeStopOrders(bool buyOrSell)
     }
 }
 
-void book::stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell)
-{
+void book::stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell){
     int orderId = stopLimitOrder->get_idNumber();
     int shares = stopLimitOrder->getshares();
     int limitPrice = stopLimitOrder->get_Limit();
@@ -447,8 +442,7 @@ void book::stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell)
     AddLimitOrder(orderId, buyOrSell, shares, limitPrice);
 };
 
-order* book::getRandomOrder(int key, std::mt19937 gen) const
-{
+order* book::getRandomOrder(int key, std::mt19937 gen) const{
     if (key == 0)
     {
         if (limitOrders.size() > 10000)
@@ -495,8 +489,7 @@ order* book::getRandomOrder(int key, std::mt19937 gen) const
     return nullptr;
 }
 
-void book::CancelLimitOrder(int orderId)
-{
+void book::CancelLimitOrder(int orderId){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     order* Order = order_map.at(orderId);
@@ -510,8 +503,7 @@ void book::CancelLimitOrder(int orderId)
     }
 }
 
-int book::StopLimitOrderAsLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice)
-{
+int book::StopLimitOrderAsLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice){
     if (buyOrSell && lowestsell != nullptr && stopPrice <= lowestsell->get_limitPrice())
     {
         AddLimitOrder(orderId, true, shares, limitPrice);
@@ -524,14 +516,12 @@ int book::StopLimitOrderAsLimitOrder(int orderId, bool buyOrSell, int shares, in
     return shares;
 }
 
-int book::LimitOrderAsMarketOrder(int orderId, bool buyOrSell, int shares, int limitPrice)
-{
+int book::LimitOrderAsMarketOrder(int orderId, bool buyOrSell, int shares, int limitPrice){
     if (buyOrSell)
     {
         while (lowestsell != nullptr && shares != 0 && lowestsell->get_limitPrice() <= limitPrice)
         {
-            if (shares <= lowestsell->get_totalshares())
-            {
+            if (shares <= lowestsell->get_totalshares()){
                 MarketOrderHelper(orderId, buyOrSell, shares);
                 return 0;
             } else {
@@ -543,8 +533,7 @@ int book::LimitOrderAsMarketOrder(int orderId, bool buyOrSell, int shares, int l
     } else {
         while (highestbuy != nullptr && shares != 0 && highestbuy->get_limitPrice() >= limitPrice)
         {
-            if (shares <= highestbuy->get_totalshares())
-            {
+            if (shares <= highestbuy->get_totalshares()){
                 MarketOrderHelper(orderId, buyOrSell, shares);
                 return 0;
             } else {
@@ -576,8 +565,7 @@ void book::MarketOrderHelper(int orderid , bool buyorsell,int shares){
     }
 }
 
-void book::marketOrder(int orderid, bool buyorsell, int shares)
-{
+void book::marketOrder(int orderid, bool buyorsell, int shares){
     auto executedOrdersCount = 0;
     auto AVLTreeBalanceCount = 0;
     MarketOrderHelper(orderid, buyorsell, shares);
@@ -592,7 +580,7 @@ void book::deleteFromOrderMap(order* Order){
     }
 };
 
-std::vector<int> book::PreorderTraversal(limit* root) {
+std::vector<int> book::PreorderTraversal(limit* root){
     auto result = std::vector<int>();
     if (root != nullptr) {
         PreorderHelper(root, result);
@@ -608,7 +596,7 @@ void book::PreorderHelper(limit* root,std::vector<int>& result){
     }
 };
 
-std::vector<int> book::PostorderTraversal(limit* root) {
+std::vector<int> book::PostorderTraversal(limit* root){
     auto result = std::vector<int>();
     if (root != nullptr) {
         PostorderHelper(root, result);
@@ -624,7 +612,7 @@ void book::PostorderHelper(limit* root,std::vector<int>& result){
     }
 };
 
-std::vector<int> book::InorderTraversal(limit* root) {
+std::vector<int> book::InorderTraversal(limit* root){
     auto result = std::vector<int>();
     if (root != nullptr) {
         inOrderTreeHelper(root, result);

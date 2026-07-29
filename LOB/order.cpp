@@ -56,8 +56,23 @@ void order::cancel(){
 }
 
 void order::execute(){
+    if (prevOrder){
+        prevOrder->nextOrder = nextOrder;
+    }
+    else{
+        parent_limit->headOrder = nextOrder;
+    }
+    if (nextOrder){
+        nextOrder->prevOrder = prevOrder;
+    }
+    else{
+        parent_limit->tailOrder = prevOrder;
+    }
+    parent_limit->totalshares -= shares;
+    parent_limit->size--;
 
-    
+    prevOrder = nullptr;
+    nextOrder = nullptr;
 }
 
 void order::modifyorder(int newshares , int newlimit){
