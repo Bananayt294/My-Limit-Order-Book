@@ -12,14 +12,11 @@ int main() {
 
     OrderPipeline orderPipeline(book);
 
-    // GenerateOrders generateOrders(book);
+    GenerateOrders generateOrders(book);
 
-    // generateOrders.createInitialOrders(10000, 300);
+    generateOrders.createInitialOrders(1000000, 300);
 
-    //orderPipeline.processOrdersFromFile("./initialOrders.txt");
-
-    // generateOrders.createOrders(5000000);
-
+    // generateOrders.createOrders(1000000);
 
     // Start measuring time
     auto start = std::chrono::high_resolution_clock::now();

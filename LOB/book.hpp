@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 class order_pool;
+class limit_pool;
 class limit;
 class order;
 
@@ -23,6 +24,7 @@ class book{
 
     std::unordered_map<int, order*> order_map;
     order_pool* order_allocator;
+    limit_pool* limit_allocator;
     std::unordered_map<int, limit*> limitbuy_map;
     std::unordered_map<int, limit*> limitsell_map;
     std::unordered_map<int, limit*> stopmap;

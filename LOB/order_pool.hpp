@@ -5,7 +5,7 @@
 #include <vector>
 class order_pool {
     private:
-    constexpr static int MAX_ORDERS = 1000000;
+    constexpr static int MAX_ORDERS = 2000000;
     alignas(order) char memory[MAX_ORDERS * sizeof(order)];
     std::vector<size_t> free_indices;
     std::vector<unsigned char> slot_in_use;

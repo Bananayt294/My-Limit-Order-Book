@@ -39,6 +39,12 @@ limit* order::get_parent_limit(){
 }
 
 void order::cancel(){
+  if (parent_limit == nullptr) {
+    prevOrder = nullptr;
+    nextOrder = nullptr;
+    return;
+  }
+
   if (prevOrder == nullptr){
      parent_limit -> headOrder = nextOrder;
   }else {
@@ -56,6 +62,12 @@ void order::cancel(){
 }
 
 void order::execute(){
+    if (parent_limit == nullptr) {
+        prevOrder = nullptr;
+        nextOrder = nullptr;
+        return;
+    }
+
     if (prevOrder){
         prevOrder->nextOrder = nextOrder;
     }
@@ -85,5 +97,7 @@ void order::modifyorder(int newshares , int newlimit){
 
 void order::partiallyFillOrder(int Orderedshares){
     this -> shares -= Orderedshares;
-    parent_limit -> partiallyFillTotalVolume(Orderedshares);
+    if (parent_limit != nullptr) {
+        parent_limit -> partiallyFillTotalVolume(Orderedshares);
+    }
 }

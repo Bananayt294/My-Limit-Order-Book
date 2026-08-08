@@ -280,7 +280,8 @@ void GenerateOrders::createOrders(int numberOfOrders)
     const auto outputPath = std::filesystem::path(__FILE__).parent_path() / "orders.txt";
     file.open(outputPath);
 
-    if (!file.is_open()) {
+    if (!file.is_open()) 
+    {
         std::cerr << "Error opening file for writing!" << std::endl;
         return;
     }
@@ -344,9 +345,10 @@ void GenerateOrders::createInitialOrders(int numberOfOrders, int centreOfBook)
 {
     // Open a file named "initialOrders.txt" for writing
     const auto outputPath = std::filesystem::path(__FILE__).parent_path() / "initialOrders.txt";
-    std::ofstream file(outputPath);
+    file.open(outputPath); // GOOD: Opens the existing class member stream
 
-    if (!file.is_open()) {
+    if (!file.is_open()) 
+    {
         std::cerr << "Error opening file for writing!" << std::endl;
         return;
     }
@@ -357,8 +359,11 @@ void GenerateOrders::createInitialOrders(int numberOfOrders, int centreOfBook)
     // Define the normal distribution for limitPrice (Mean, SD)
     std::normal_distribution<> limitPriceDist(centreOfBook, 50);
 
+    const int initialStopOrders = std::max(1, numberOfOrders / 10);
+    const int initialLimitOrders = numberOfOrders - initialStopOrders;
+
     // Adding initial limit orders
-    for (int order = 1; order <= numberOfOrders; ++order) {
+    for (int order = 1; order <= initialLimitOrders; ++order) {
         int shares = sharesDist(gen);
         int limitPrice = limitPriceDist(gen);
         bool buyOrSell = limitPrice < centreOfBook;
@@ -371,7 +376,7 @@ void GenerateOrders::createInitialOrders(int numberOfOrders, int centreOfBook)
     std::uniform_int_distribution<> stopOrStopLimitDist(0, 1);
 
     // Adding initial stop and stop limit orders
-    for (int order = numberOfOrders + 1; order <= numberOfOrders * 1.1; ++order) {
+    for (int order = initialLimitOrders + 1; order <= initialLimitOrders + initialStopOrders; ++order) {
         int shares = sharesDist(gen);
         int stopPrice = limitPriceDist(gen);
         bool buyOrSell = stopPrice > centreOfBook;
