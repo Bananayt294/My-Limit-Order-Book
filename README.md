@@ -1,176 +1,113 @@
-Limit Order Book
+# My-Limit-Order-Book
+
+# Architecture (HUGE CREDIT TO BRPROJECTS FOR INSPIRATION)
+<br>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/brprojects/Limit-Order-Book/main/figures/architecture.png" alt="Limit Order Book Architecture (credit to brprojects)" width="900"/>
+</p>
+
+
+# Limit Order Book
 
 A high-performance C++20 Limit Order Book implementing price-time priority (FIFO) matching using an AVL tree for price levels and a custom memory pool for order allocation.
 
 This project was built to explore the data structures and algorithms used in modern electronic exchanges and high-frequency trading systems while emphasizing performance, memory efficiency, and clean object-oriented design.
 
-Features
+---
 
-Price-Time Priority (FIFO)
+## Features
 
-AVL Tree for price levels with cached node heights
+- Price-Time Priority (FIFO)
+- AVL Tree for price levels
+- O(log N) insertion and deletion of price levels
+- O(1) access to best bid and ask
+- Doubly linked list of orders at each price level
+- Custom memory pool allocator for orders
+- Market Orders
+- Limit Orders
+- Stop Orders
+- Order Modification
+- Order Cancellation
+- Automatic removal of empty price levels
+- Order lookup using hash tables
 
-$O(\log N)$ insertion and deletion of price levels
+---
 
-$O(1)$ access to best bid and ask
+## Data Structures
 
-Doubly linked list of orders at each price level
+### Price Levels
 
-Custom memory pool allocator for orders
-
-Market Orders
-
-Limit Orders
-
-Stop Orders
-
-Order Modification
-
-Order Cancellation
-
-Automatic removal of empty price levels
-
-Fast order lookup using hash tables
-
-Data Structures
-
-Price Levels
-
-Price levels are stored inside a height-balanced AVL tree.
+Price levels are stored inside an AVL tree.
 
 Each node contains:
 
-Price
+- Price
+- Total volume
+- FIFO queue of orders
+- Parent pointer
+- Left child
+- Right child
 
-Total volume
+Maintaining an AVL tree guarantees
 
-FIFO queue of orders
-
-Cached node height (int height)
-
-Parent pointer
-
-Left child
-
-Right child
-
-Maintaining an AVL tree guarantees:
-
-$O(\log N)$ insertion
-
-$O(\log N)$ deletion
-
-$O(\log N)$ lookup
+- O(log N) insertion
+- O(log N) deletion
+- O(log N) lookup
 
 while keeping the tree balanced after every update.
 
-Orders
+---
+
+### Orders
 
 Orders are stored inside a doubly linked list at each price level.
 
+```
 Head <-> Order <-> Order <-> Tail
+```
 
+This allows
 
-This allows:
-
-$O(1)$ insertion
-
-$O(1)$ cancellation
-
-$O(1)$ modification
+- O(1) insertion
+- O(1) cancellation
+- O(1) modification
 
 while preserving FIFO execution.
 
-Memory Pool
+---
 
-Instead of allocating every order with new, the project uses a custom memory pool.
+### Memory Pool
 
-Benefits include:
+Instead of allocating every order with `new`, the project uses a custom memory pool.
 
-Reduced heap allocations
+Benefits include
 
-Better cache locality
-
-Lower allocation overhead
-
-More deterministic performance
+- Reduced heap allocations
+- Better cache locality
+- Lower allocation overhead
+- More deterministic performance
 
 Orders are recycled rather than repeatedly allocated and freed.
 
-Performance Optimization — Cached AVL Tree Heights
+---
 
-The primary optimization made to the Limit Order Book was the addition of a height cache to the AVL tree nodes used by the price-level structure.
+## Complexity
 
-The Problem
+| Operation | Complexity |
+|----------|------------|
+| Add Limit Order | O(log N) |
+| Cancel Order | O(1) + O(log N) if price level removed |
+| Modify Order | O(1) / O(log N) depending on modification |
+| Market Order | O(log N) |
+| Find Order | O(1) |
+| Best Bid | O(1) |
+| Best Ask | O(1) |
 
-The AVL tree requires node heights when calculating balance factors:
+---
 
-$$\text{balance factor} = \text{height}(\text{left subtree}) - \text{height}(\text{right subtree})$$
+## Project Structure
 
-Without cached heights, obtaining the height of a subtree can require recursively traversing that subtree. This becomes particularly expensive because AVL balancing is performed during structural modifications to the tree (insertions, deletions, and rotations) which occur frequently in an active order book.
-
-The Optimization
-
-Each AVL node now stores its current height directly:
-
-struct Node {
-    // ...
-    int height;
-};
-
-
-Instead of recursively calculating height on demand, the height is retrieved in constant time:
-
-node->height
-
-
-When structural changes occur, the affected node's height is updated in $O(1)$ using cached child heights:
-
-node->height = 1 + std::max(getHeight(node->left), getHeight(node->right));
-
-
-(where getHeight() returns 0 for null nodes or the cached node->height value).
-
-Why This Matters
-
-This optimization does not alter the asymptotic time complexity of the AVL tree ($O(\log N)$ search, insertion, deletion, and modification). Instead, it dramatically reduces the constant factor cost during structural modifications, rebalancing, and rotations.
-
-Complexity
-
-Operation
-
-Complexity
-
-Add Limit Order
-
-$O(\log N)$
-
-Cancel Order
-
-$O(1) + O(\log N)$ if price level removed
-
-Modify Order
-
-$O(1) / O(\log N)$ depending on modification
-
-Market Order
-
-$O(\log N)$
-
-Find Order
-
-$O(1)$
-
-Best Bid
-
-$O(1)$
-
-Best Ask
-
-$O(1)$
-
-Project Structure
-
+```
 LOB/
 │
 ├── book.cpp
@@ -180,7 +117,7 @@ LOB/
 ├── order.cpp
 ├── order.hpp
 ├── order_pool.cpp
-└── order_pool.hpp
+├── order_pool.hpp
 │
 Process_Orders/
 │
@@ -190,304 +127,212 @@ Process_Orders/
 Generate_Orders/
 │
 └── GenerateOrders.cpp
+```
 
+---
 
-Build & Run
+## Build
 
-Compilation
+Using GCC
 
-Build with GCC (C++20, -O3, -march=native, -DNDEBUG):
+```bash
+g++ -std=c++20 -I. -ILOB -IProcess_Orders LOB/*.cpp Process_Orders/*.cpp -o main.exe
+```
 
-g++ -std=c++20 -O3 -march=native -DNDEBUG -I. -ILOB -IProcess_Orders LOB/*.cpp Process_Orders/*.cpp Generate_Orders/*.cpp -o main.exe
+Run
 
-
-Execution
-
+```bash
 ./main.exe
+```
 
+---
 
-Performance Benchmarks
+## Current Performance
 
-The order book was benchmarked before and after adding the cached AVL tree height optimization.
+Current implementation includes
 
-Test Methodology & Environment
+- AVL balanced price tree
+- FIFO matching engine
+- Custom order allocator
 
-To ensure strict, reproducible comparison, both benchmark sets were executed under identical conditions:
+## Performance Benchmarks
 
-Environment: Same machine, OS, compiler (g++), standard (C++20), and optimization flags (-O3 -march=native -DNDEBUG).
+The order book is benchmarked using three different workloads to separate raw order-book performance from file-processing overhead and mixed-operation performance.
 
-Workload Parameters: Same random seed (42), prices (90–110), volumes (1–100), side distribution (50/50), and number of operations (1,000,000).
+### Test Environment
 
-Isolation: For direct in-memory benchmarks (B & C), workloads were pre-generated before starting the timer to isolate LOB execution from I/O or RNG overhead.
+* Language: C++20
+* Compiler: `g++`
+* Optimization: `-O3`
+* Architecture optimization: `-march=native`
+* Assertions disabled: `-DNDEBUG`
+* Orders/operations per benchmark: **1,000,000**
 
-Note: Benchmark results are hardware-dependent. These numbers serve as relative baseline performance figures for this implementation.
+> **Note:** Benchmark results are hardware-dependent. These numbers should be used as a baseline for this implementation and workload rather than as universal performance figures.
 
-Benchmark A — Full Order Pipeline
+---
 
-Measures the end-to-end order processing path using a pre-generated file of 1,000,000 orders:
+### Benchmark A — File Pipeline
 
-$$\text{Input File} \longrightarrow \text{File I/O} \longrightarrow \text{Order Parsing} \longrightarrow \text{Order Pipeline} \longrightarrow \text{Limit Order Book}$$
+Benchmark A measures the complete order-processing pipeline using a pre-generated file containing **1,000,000 orders**.
 
-Metric
+This benchmark includes:
 
-Before Optimization
+* File I/O
+* Order parsing
+* Order processing
+* Limit order book operations
 
-After Optimization
+Random order generation occurs before the timer and is therefore **not included** in the measured time.
 
-Change
+| Metric             |                  Result |
+| ------------------ | ----------------------: |
+| Orders processed   |               1,000,000 |
+| Total time         |             **8.420 s** |
+| Throughput         | **~118,765 orders/sec** |
+| Average time/order |            **~8.42 µs** |
 
-Orders processed
+This benchmark represents the end-to-end cost of processing orders through the file-based pipeline.
 
-1,000,000
+---
 
-1,000,000
+### Benchmark B — Add Limit Orders
 
-—
+Benchmark B measures the raw performance of `AddLimitOrder()` without file I/O, parsing, or random workload generation.
 
-Total time
+A pre-generated workload of **1,000,000 limit orders** is stored in memory before timing begins.
 
-8.420 s
+Five runs were performed:
 
-2.335 s
+| Run |       Time |        Throughput |          Latency |
+| --: | ---------: | ----------------: | ---------------: |
+|   1 | 279.017 ms | 3.584M orders/sec | 279.017 ns/order |
+|   2 | 273.857 ms | 3.652M orders/sec | 273.857 ns/order |
+|   3 | 283.682 ms | 3.525M orders/sec | 283.682 ns/order |
+|   4 | 268.939 ms | 3.718M orders/sec | 268.939 ns/order |
+|   5 | 290.376 ms | 3.444M orders/sec | 290.376 ns/order |
 
-3.61× faster
+**Average:**
 
-Throughput
+| Metric             |                Result |
+| ------------------ | --------------------: |
+| Average time       |         **279.17 ms** |
+| Average throughput | **~3.58M orders/sec** |
+| Average latency    |  **~279.17 ns/order** |
+| Fastest run        | **3.718M orders/sec** |
+| Slowest run        | **3.444M orders/sec** |
 
-118,765 orders/sec
+This benchmark is intended to measure the performance of the core limit-order insertion path.
 
-428,266 orders/sec
+---
 
-+260.6%
+### Benchmark C — Mixed Order Book Operations
 
-Average latency
+Benchmark C measures a mixed workload consisting of:
 
-8,420 ns/order
+* **50% `AddLimitOrder`**
+* **25% `CancelLimitOrder`**
+* **25% `ModifyLimitOrder`**
 
-2,335 ns/order
+The workload is generated completely before the timer starts, so random-number generation and workload construction are excluded from the measured time.
 
-72.27% lower
+Each run processes **1,000,000 operations**.
 
-Benchmark B — Add Limit Orders
+#### Results
 
-Isolates raw AddLimitOrder() performance across 5 consecutive runs of 1,000,000 limit order insertions in memory.
-
-Detailed Run Data (After Optimization)
-
-Run 1: 251.231 ms
-
-Run 2: 302.998 ms
-
-Run 3: 289.677 ms
-
-Run 4: 209.951 ms
-
-Run 5: 250.688 ms
-
-Summary Comparison
-
-Metric
-
-Before Optimization
-
-After Optimization
-
-Change
-
-Average time
-
-279.174 ms
-
-260.909 ms
-
-1.07× faster
-
-Average throughput
-
-~3.58M orders/sec
-
-~3.833M orders/sec
-
-+~7.1%
-
-Average latency
-
-279.17 ns/order
-
-260.91 ns/order
-
-6.54% lower
-
-The modest improvement here is expected as pure insertions exercise rebalancing less frequently than mixed deletion/modification workloads.
-
-Benchmark C — Mixed Order Book Operations
-
-Measures a dynamic workload of 1,000,000 operations simulating active trading:
-
-50% AddLimitOrder
-
-25% CancelLimitOrder
-
-25% ModifyLimitOrder
-
-(Note: The first 10,000 operations are guaranteed additions to build initial depth before cancels/modifications begin).
-
-Detailed Run Data (After Optimization — 16 Runs in ns/op)
-
-146.867 | 167.506 | 163.665 | 144.840 | 147.413 | 139.413 | 196.712 | 149.138
-160.244 | 160.682 | 159.232 | 181.986 | 151.299 | 176.320 | 143.133 | 159.824
-
-
-Summary Comparison
-
-Metric
-
-Before Optimization
-
-After Optimization
-
-Change
-
-Average latency
-
-592.36 ns/op
-
-159.27 ns/op
-
-73.11% lower
-
-Median latency
-
-588.64 ns/op
-
-159.53 ns/op
-
-72.90% lower
-
-Fastest run
-
-544.93 ns/op
-
-139.41 ns/op
-
-~7.17M ops/sec
-
-Slowest run
-
-642.22 ns/op
-
-196.71 ns/op
-
-~5.08M ops/sec
-
-Average throughput
-
-~1.69M ops/sec
-
-~6.279M ops/sec
-
-3.72× higher (+271.5%)
-
-Benchmark Performance Summary
-
-Benchmark
-
-Workload
-
-Before (Latency / Throughput)
-
-After (Latency / Throughput)
-
-Overall Speedup
-
-A
-
-Full File Pipeline
-
-8,420 ns / 118.8K ops/s
-
-2,335 ns / 428.3K ops/s
-
-3.61×
-
-B
-
-100% Add Limit Order
-
-279.17 ns / 3.58M ops/s
-
-260.91 ns / 3.83M ops/s
-
-1.07×
-
-C
-
-Mixed (50% Add / 25% Cancel / 25% Modify)
-
-592.36 ns / 1.69M ops/s
-
-159.27 ns / 6.28M ops/s
-
-3.72×
-
-Performance Analysis
-
-Impact on Tree Maintenance: The height-cache optimization had a massive impact on mixed operations (3.72× speedup in Benchmark C). Mixed operations trigger frequent additions, modifications, and deletions that create and destroy price levels, causing repeated tree rebalancing and rotations.
-
-Pipeline Scaling: The 3.61× gain in Benchmark A demonstrates that optimizing core data structures yields substantial end-to-end benefits across the entire processing pipeline.
-
-Current System Capability:
-
-~428K orders/sec end-to-end file pipeline.
-
-~3.83M orders/sec pure limit order insertion.
-
-~6.28M ops/sec mixed trading workload.
-
-Planned Optimizations
-
-SIMD optimizations
-
-Cache-aware data layout
-
-Branch prediction improvements
-
-False sharing reduction
-
-Multi-threaded order ingestion
-
-Lock-free queues
-
-NUMA-aware memory layout
-
-Latency profiling
-
-Exchange protocol parser (ITCH/OUCH)
-
-Future Features
-
-Iceberg Orders
-
-Pegged Orders
-
-IOC/FOK Orders
-
-Good Till Cancelled Orders
-
-Snapshot generation
-
-Market data feed
-
-Replay engine
-
-Historical backtesting integration
-
-Motivation
+| Run |       Time |     Throughput |       Latency |
+| --: | ---------: | -------------: | ------------: |
+|   1 | 544.933 ms | 1.835M ops/sec | 544.933 ns/op |
+|   2 | 569.752 ms | 1.755M ops/sec | 569.752 ns/op |
+|   3 | 642.219 ms | 1.557M ops/sec | 642.219 ns/op |
+|   4 | 573.920 ms | 1.742M ops/sec | 573.920 ns/op |
+|   5 | 583.839 ms | 1.713M ops/sec | 583.839 ns/op |
+|   6 | 575.459 ms | 1.738M ops/sec | 575.459 ns/op |
+|   7 | 604.632 ms | 1.654M ops/sec | 604.632 ns/op |
+|   8 | 606.005 ms | 1.650M ops/sec | 606.005 ns/op |
+|   9 | 619.348 ms | 1.615M ops/sec | 619.348 ns/op |
+|  10 | 608.896 ms | 1.642M ops/sec | 608.896 ns/op |
+|  11 | 635.376 ms | 1.574M ops/sec | 635.376 ns/op |
+|  12 | 593.441 ms | 1.685M ops/sec | 593.441 ns/op |
+|  13 | 574.592 ms | 1.740M ops/sec | 574.592 ns/op |
+|  14 | 568.263 ms | 1.760M ops/sec | 568.263 ns/op |
+|  15 | 599.064 ms | 1.669M ops/sec | 599.064 ns/op |
+|  16 | 578.046 ms | 1.730M ops/sec | 578.046 ns/op |
+
+#### Aggregate Results
+
+| Metric             |             Result |
+| ------------------ | -----------------: |
+| Operations/run     |      **1,000,000** |
+| Number of runs     |             **16** |
+| Average latency    |  **~592.36 ns/op** |
+| Average throughput | **~1.69M ops/sec** |
+| Median latency     |  **~588.64 ns/op** |
+| Fastest run        |  **544.933 ns/op** |
+| Slowest run        |  **642.219 ns/op** |
+| Fastest throughput | **1.835M ops/sec** |
+| Slowest throughput | **1.557M ops/sec** |
+| Standard deviation |      **~26.18 ns** |
+
+---
+
+### Benchmark Summary
+
+| Benchmark | Workload                          | Operations |     Throughput | Avg. Latency |
+| --------- | --------------------------------- | ---------: | -------------: | -----------: |
+| **A**     | File pipeline                     |  1M orders |    ~118.8K/sec |     ~8.42 µs |
+| **B**     | 100% Add                          |  1M orders | **~3.58M/sec** |  **~279 ns** |
+| **C**     | 50% Add / 25% Cancel / 25% Modify |     1M ops | **~1.69M/sec** |  **~592 ns** |
+
+### Interpretation
+
+Benchmark A measures the complete file-based processing pipeline, while Benchmarks B and C isolate the in-memory order-book operations.
+
+Benchmark B provides a baseline for the raw limit-order insertion path, achieving approximately **3.58 million orders/sec**.
+
+Benchmark C provides a more representative mixed-operation workload and achieves approximately **1.69 million operations/sec**, with an average latency of approximately **592 ns per operation**.
+
+These benchmarks serve as the baseline for future optimization work. Future optimizations will be evaluated by rerunning the same workloads and comparing throughput and latency against these results.
+
+
+---
+
+## Planned Optimizations
+
+- SIMD optimizations
+- Cache-aware data layout
+- Branch prediction improvements
+- False sharing reduction
+- Multi-threaded order ingestion
+- Lock-free queues
+- NUMA-aware memory layout
+- Benchmark suite
+- Latency profiling
+- Exchange protocol parser (ITCH/OUCH)
+
+---
+
+## Future Features
+
+- Iceberg Orders
+- Pegged Orders
+- IOC/FOK Orders
+- Good Till Cancelled Orders
+- Snapshot generation
+- Market data feed
+- Replay engine
+- Historical backtesting integration
+
+---
+
+## Motivation
 
 This project was created to better understand the internal architecture of electronic exchanges and the software engineering techniques used in low-latency trading systems.
 
 Rather than relying on external libraries, nearly every core data structure—including the AVL tree, memory pool, and matching engine—has been implemented from scratch.
 
-License
+---
+
+## License
 
 MIT License
