@@ -3,34 +3,90 @@
 #include "../LOB/Book.hpp"
 #include "../LOB/Limit.hpp"
 #include "../LOB/Order.hpp"
+
 #include <iostream>
-#include <vector>
 #include <chrono>
+#include <iomanip>
 
 int main() {
-    Book* book = new Book();  
+    Book* book = new Book();
 
     OrderPipeline orderPipeline(book);
 
-    GenerateOrders generateOrders(book);
+    const long long expectedOrders = 400391; // Change this for your dataset
 
-    generateOrders.createInitialOrders(1000000, 300);
+    std::cout << "========================================\n";
+    std::cout << "        LIMIT ORDER BOOK BENCHMARK\n";
+    std::cout << "========================================\n";
 
-    // generateOrders.createOrders(1000000);
+    std::cout << "Input file: AAPL_replay.txt\n";
+    std::cout << "Orders:     " << expectedOrders << "\n";
+    std::cout << "----------------------------------------\n";
 
-    // Start measuring time
+    // Start measuring
     auto start = std::chrono::high_resolution_clock::now();
 
-    orderPipeline.processOrdersFromFile("D:\\C++\\Workspaces\\My LOB\\Generate_Orders\\initialOrders.txt");
+    orderPipeline.processOrdersFromFile(
+        "c:\\LOB\\My-Limit-Order-Book\\data\\AAPL_replay.txt"
+    );
 
-    // Stop measuring time
+    // Stop measuring
     auto stop = std::chrono::high_resolution_clock::now();
 
-    // Calculate the duration
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    // Measure in nanoseconds for maximum precision
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        stop - start
+    );
 
-    std::cout << "Time taken to process orders: " << duration.count() << " milliseconds" << std::endl;
+    const double seconds = duration.count() / 1'000'000'000.0;
+
+    const double ordersPerSecond =
+        expectedOrders / seconds;
+
+    const double nanosecondsPerOrder =
+        static_cast<double>(duration.count()) / expectedOrders;
+
+    const double microsecondsPerOrder =
+        nanosecondsPerOrder / 1'000.0;
+
+    const double millisecondsPerOrder =
+        nanosecondsPerOrder / 1'000'000.0;
+
+    const double timePerMillionOrders =
+        seconds * (1'000'000.0 / expectedOrders);
+
+    std::cout << std::fixed << std::setprecision(3);
+
+    std::cout << "Processing time:       "
+              << seconds << " seconds\n";
+
+    std::cout << "Processing time:       "
+              << duration.count() / 1'000'000.0
+              << " milliseconds\n";
+
+    std::cout << "Throughput:             "
+              << ordersPerSecond
+              << " orders/sec\n";
+
+    std::cout << "Average time/order:     "
+              << nanosecondsPerOrder
+              << " ns/order\n";
+
+    std::cout << "Average time/order:     "
+              << microsecondsPerOrder
+              << " us/order\n";
+
+    std::cout << "Average time/order:     "
+              << millisecondsPerOrder
+              << " ms/order\n";
+
+    std::cout << "Time per 1M orders:     "
+              << timePerMillionOrders
+              << " seconds\n";
+
+    std::cout << "========================================\n";
 
     delete book;
+
     return 0;
 }
