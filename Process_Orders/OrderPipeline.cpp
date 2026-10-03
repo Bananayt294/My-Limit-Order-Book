@@ -8,65 +8,83 @@
 #include <chrono>
 
 OrderPipeline::OrderPipeline(book* b) : m_book(b) {
-    orderFunctions = {
-        {"Market", &OrderPipeline::processMarketOrder},
-        {"AddLimit", &OrderPipeline::processAddLimitOrder},
-        {"AddMarketLimit", &OrderPipeline::processAddLimitOrder},
-        {"CancelLimit", &OrderPipeline::processCancelLimitOrder},
-        {"ModifyLimit", &OrderPipeline::processModifyLimitOrder},
-        {"AddStop", &OrderPipeline::processAddStopOrder},
-        {"CancelStop", &OrderPipeline::processCancelStopOrder},
-        {"ModifyStop", &OrderPipeline::processModifyStopOrder},
-        {"AddStopLimit", &OrderPipeline::processAddStopLimitOrder},
-        {"CancelStopLimit", &OrderPipeline::processCancelStopLimitOrder},
-        {"ModifyStopLimit", &OrderPipeline::processModifyStopLimitOrder}
-    };
+  orderFunctions = {
+    {"Market", &OrderPipeline::processMarketOrder},
+    {"AddLimit", &OrderPipeline::processAddLimitOrder},
+    {"AddMarketLimit", &OrderPipeline::processAddLimitOrder},
+    {"CancelLimit", &OrderPipeline::processCancelLimitOrder},
+    {"ModifyLimit", &OrderPipeline::processModifyLimitOrder},
+
+    {"ReduceOrder", &OrderPipeline::processReduceOrder},
+    {"ExecuteOrder", &OrderPipeline::processExecuteOrder},
+
+    {"AddStop", &OrderPipeline::processAddStopOrder},
+    {"CancelStop", &OrderPipeline::processCancelStopOrder},
+    {"ModifyStop", &OrderPipeline::processModifyStopOrder},
+    {"AddStopLimit", &OrderPipeline::processAddStopLimitOrder},
+    {"CancelStopLimit", &OrderPipeline::processCancelStopLimitOrder},
+    {"ModifyStopLimit", &OrderPipeline::processModifyStopLimitOrder}
+};
 }
 
-void OrderPipeline::processOrdersFromFile(const std::string& filename) 
+void OrderPipeline::processOrdersFromFile(const std::string& filename)
 {
     std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return;
-    }
 
-    std::ofstream csvFile("order_processing_times.csv", std::ios::trunc); // Open in append mode
-    if (!csvFile.is_open()) {
-        std::cerr << "Error opening CSV file for writing." << std::endl;
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: "
+                  << filename << std::endl;
         return;
     }
 
     std::string line;
+    long long processed = 0;
+
+    auto lastTime = std::chrono::steady_clock::now();
+
     while (std::getline(file, line)) {
+
         std::istringstream iss(line);
+
         std::string orderType;
         iss >> orderType;
 
         auto it = orderFunctions.find(orderType);
-            if (it != orderFunctions.end()) {
-                auto start = std::chrono::steady_clock::now();
 
-                (this->*(it->second))(iss);
+        if (it != orderFunctions.end()) {
 
-                auto end = std::chrono::steady_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-                
-                if (orderType == "AddLimit")
-                {
-                    csvFile << orderType << "," << duration.count() << std::endl;
-                } else {
-                    csvFile << orderType << "," << duration.count() << std::endl;
-                }
-                
-            } else {
-                std::cerr << "Unknown order type: " << orderType << std::endl;
+            (this->*(it->second))(iss);
+
+            processed++;
+
+            if (processed % 1000 == 0) {
+
+                auto now = std::chrono::steady_clock::now();
+
+                auto elapsed =
+                    std::chrono::duration_cast<
+                        std::chrono::milliseconds
+                    >(now - lastTime);
+
+                std::cout
+                    << "Processed: "
+                    << processed
+                    << " | Last 1000: "
+                    << elapsed.count()
+                    << " ms"
+                    << std::endl;
+
+                lastTime = now;
             }
+        }
     }
-    file.close();
-    csvFile.close();
-}
 
+    std::cout
+        << "Finished processing: "
+        << processed
+        << " orders."
+        << std::endl;
+}
 void OrderPipeline::processMarketOrder(std::istringstream& iss) {
     int orderId, shares;
     bool buyOrSell;
@@ -131,4 +149,22 @@ void OrderPipeline::processModifyStopLimitOrder(std::istringstream& iss) {
     bool buyOrSell;
     iss >> orderId >> buyOrSell >> newShares >> newStopPrice;
     m_book->ModifyStopLimitOrder(orderId, buyOrSell, newShares, newStopPrice);
+}
+
+void OrderPipeline::processReduceOrder(std::istringstream& iss)
+{
+    int orderId, shares;
+
+    iss >> orderId >> shares;
+
+    m_book->ReduceOrder(orderId, shares);
+}
+
+void OrderPipeline::processExecuteOrder(std::istringstream& iss)
+{
+    int orderId, shares;
+
+    iss >> orderId >> shares;
+
+    m_book->ExecuteOrder(orderId, shares);
 }

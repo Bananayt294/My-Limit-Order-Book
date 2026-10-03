@@ -2,7 +2,6 @@
 #include "../LOB/book.hpp"
 #include "../LOB/order.hpp"
 #include "../LOB/limit.hpp"
-
 #include <iostream>
 #include <fstream>
 #include <sstream>

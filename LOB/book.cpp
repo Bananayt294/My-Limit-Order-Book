@@ -182,14 +182,31 @@ limit* book::getHighestBuy() const{
     return highestbuy;
 }
 
+void book::updateHeight(limit* Limit)
+{
+    if (Limit == nullptr)
+        return;
 
+    int leftHeight = 0;
+    int rightHeight = 0;
 
-int book::getLimitHeight(limit* node){
-    if(node == nullptr)
+    if (Limit->get_leftchild() != nullptr)
+        leftHeight = Limit->get_leftchild()->getHeight();
+
+    if (Limit->get_rightchild() != nullptr)
+        rightHeight = Limit->get_rightchild()->getHeight();
+
+    Limit->setHeight(
+        1 + std::max(leftHeight, rightHeight)
+    );
+}
+
+int book::getLimitHeight(limit* node)
+{
+    if (node == nullptr)
         return 0;
 
-    return 1 + std::max(getLimitHeight(node->get_leftchild()),
-                        getLimitHeight(node->get_rightchild()));
+    return node->getHeight();
 }
 
 int book::getLeftSideHeight(limit* Limit){
@@ -206,21 +223,42 @@ int book::getRightSideHeight(limit* Limit){
     return getLimitHeight(Limit -> get_rightchild());
 }
 
-limit* book::insert(limit* root , limit* newlimit , limit* parent){
-    if (root == nullptr){
-        newlimit -> setParent(parent);
+limit* book::insert(
+    limit* root,
+    limit* newlimit,
+    limit* parent
+)
+{
+    if (root == nullptr) {
+        newlimit->setParent(parent);
+        newlimit->setHeight(1);
         return newlimit;
     }
-    if (newlimit -> get_limitPrice() < root -> get_limitPrice()){
-        root -> setleftchild(insert(root->get_leftchild() , newlimit , root));
+
+    if (newlimit->get_limitPrice() < root->get_limitPrice()) {
+
+        root->setleftchild(
+            insert(
+                root->get_leftchild(),
+                newlimit,
+                root
+            )
+        );
 
     }
-    else if (newlimit -> get_limitPrice() > root -> get_limitPrice()){
-        root -> setrightchild(insert(root->get_rightchild() , newlimit , root));
+    else if (newlimit->get_limitPrice() > root->get_limitPrice()) {
+
+        root->setrightchild(
+            insert(
+                root->get_rightchild(),
+                newlimit,
+                root
+            )
+        );
     }
-    root = balanceTree(root);
-    return root;
-}//fixed Insert
+
+    return balanceTree(root);
+}
 
 void book::addLimit(int limit_price , bool buyorsell){
     auto& Limitmap = buyorsell ? limitbuy_map : limitsell_map;
@@ -290,158 +328,290 @@ void book::AddLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice
     }
 }
 
-void book::deleteLimit(limit* Limit){
-    auto buyIt = limitbuy_map.find(Limit->get_limitPrice());
-    auto sellIt = limitsell_map.find(Limit->get_limitPrice());
 
-    bool foundInBuyMap = (buyIt != limitbuy_map.end() && buyIt->second == Limit);
-    bool foundInSellMap = (sellIt != limitsell_map.end() && sellIt->second == Limit);
+void book::ReduceOrder(int orderId, int shares)
+{
+    auto it = order_map.find(orderId);
 
-    if (!foundInBuyMap && !foundInSellMap) {
-        auto stopIt = stopmap.find(Limit->get_limitPrice());
-        if (stopIt != stopmap.end() && stopIt->second == Limit) {
-            stopmap.erase(stopIt);
-            limit_allocator->release(Limit);
-            return;
-        }
+    if (it == order_map.end() || it->second == nullptr) {
         return;
     }
 
-    auto& tree = foundInBuyMap ? buytree : selltree;
-    auto& map = foundInBuyMap ? limitbuy_map : limitsell_map;
+    order* Order = it->second;
 
-    map.erase(Limit->get_limitPrice());
+    if (shares <= 0) {
+        return;
+    }
 
-    if (Limit == highestbuy)
-        highestbuy = nullptr;
+    if (shares >= Order->getshares()) {
+        CancelLimitOrder(orderId);
+        return;
+    }
 
-    if (Limit == lowestsell)
-        lowestsell = nullptr;
+    Order->partiallyFillOrder(shares);
+}
 
-    tree = deleteNode(tree, Limit->get_limitPrice());
-};
+void book::ExecuteOrder(int orderId, int shares)
+{
+    auto it = order_map.find(orderId);
+
+    if (it == order_map.end() || it->second == nullptr) {
+        return;
+    }
+
+    order* Order = it->second;
+
+    if (shares <= 0) {
+        return;
+    }
+
+    if (shares < Order->getshares()) {
+        Order->partiallyFillOrder(shares);
+        return;
+    }
+
+    limit* parentLimit = Order->get_parent_limit();
+
+    Order->execute();
+
+    if (parentLimit != nullptr && parentLimit->get_size() == 0) {
+        deleteLimit(parentLimit);
+    }
+
+    deleteFromOrderMap(Order);
+    order_allocator->release(Order);
+}
+
+
+void book::deleteLimit(limit* Limit)
+{
+    if (Limit == nullptr) {
+        return;
+    }
+
+    auto buyIt =
+        limitbuy_map.find(
+            Limit->get_limitPrice()
+        );
+
+    auto sellIt =
+        limitsell_map.find(
+            Limit->get_limitPrice()
+        );
+
+    bool foundInBuyMap =
+        (
+            buyIt != limitbuy_map.end() &&
+            buyIt->second == Limit
+        );
+
+    bool foundInSellMap =
+        (
+            sellIt != limitsell_map.end() &&
+            sellIt->second == Limit
+        );
+
+    // ---------------------------------------------
+    // Stop order level
+    // ---------------------------------------------
+    if (!foundInBuyMap && !foundInSellMap) {
+
+        auto stopIt =
+            stopmap.find(
+                Limit->get_limitPrice()
+            );
+
+        if (
+            stopIt != stopmap.end() &&
+            stopIt->second == Limit
+        ) {
+            stopmap.erase(stopIt);
+            limit_allocator->release(Limit);
+        }
+
+        return;
+    }
+
+    // ---------------------------------------------
+    // Buy side
+    // ---------------------------------------------
+    if (foundInBuyMap) {
+
+        int price = Limit->get_limitPrice();
+
+        limitbuy_map.erase(price);
+
+        buytree =
+            deleteNode(
+                buytree,
+                price
+            );
+
+        // Find new highest buy
+        highestbuy = buytree;
+
+        while (
+            highestbuy != nullptr &&
+            highestbuy->get_rightchild() != nullptr
+        ) {
+            highestbuy =
+                highestbuy->get_rightchild();
+        }
+
+        return;
+    }
+
+    // ---------------------------------------------
+    // Sell side
+    // ---------------------------------------------
+
+    int price = Limit->get_limitPrice();
+
+    limitsell_map.erase(price);
+
+    selltree =
+        deleteNode(
+            selltree,
+            price
+        );
+
+    // Find new lowest sell
+    lowestsell = selltree;
+
+    while (
+        lowestsell != nullptr &&
+        lowestsell->get_leftchild() != nullptr
+    ) {
+        lowestsell =
+            lowestsell->get_leftchild();
+    }
+}
+
 
 // deleteNode removes the limit node with the specified price from the AVL tree and returns the updated subtree root.
-limit* book::deleteNode(limit* root , int limitprice){
-
-if (root == nullptr){
+limit* book::deleteNode(limit* root, int limitprice)
+{
+    if (root == nullptr) {
         return nullptr;
-}
+    }
 
-if (limitprice < root->get_limitPrice()){
-  root -> setleftchild(deleteNode(root -> get_leftchild() , limitprice));
-}
-else if (limitprice > root->get_limitPrice()){
-  root -> setrightchild(deleteNode(root -> get_rightchild() , limitprice)); //recurse until root == limitprice
-}
-else{
-    limit* RootRightChild = root -> get_rightchild();
-    limit* RootLeftChild = root -> get_leftchild();
-    limit* parent = root -> get_parent();
-    if (RootLeftChild == nullptr && RootRightChild == nullptr){
-        if (parent != nullptr){
-            if (parent -> get_leftchild() == root){
-                parent -> setleftchild(nullptr);
-                root -> setParent(nullptr);
-            }else{
-                parent -> setrightchild(nullptr);
-                root -> setParent(nullptr);
-            }
+    // Search left
+    if (limitprice < root->get_limitPrice()) {
+
+        limit* newLeft =
+            deleteNode(
+                root->get_leftchild(),
+                limitprice
+            );
+
+        root->setleftchild(newLeft);
+
+        if (newLeft != nullptr) {
+            newLeft->setParent(root);
         }
+
+        return balanceTree(root);
+    }
+
+    // Search right
+    if (limitprice > root->get_limitPrice()) {
+
+        limit* newRight =
+            deleteNode(
+                root->get_rightchild(),
+                limitprice
+            );
+
+        root->setrightchild(newRight);
+
+        if (newRight != nullptr) {
+            newRight->setParent(root);
+        }
+
+        return balanceTree(root);
+    }
+
+    // ------------------------------------------------
+    // We found the node
+    // ------------------------------------------------
+
+    limit* parent = root->get_parent();
+
+    // Case 1: no children
+    if (
+        root->get_leftchild() == nullptr &&
+        root->get_rightchild() == nullptr
+    ) {
+
+        root->setParent(nullptr);
+
         limit_allocator->release(root);
+
         return nullptr;
-}
-    if (RootLeftChild != nullptr && RootRightChild == nullptr){
-        
-        if (parent != nullptr){
-            if (parent -> get_leftchild() == root){
-                parent -> setleftchild(RootLeftChild);
-                RootLeftChild -> setParent(parent);
-                // must make roots children nullptr
-                root -> setleftchild(nullptr);
-                root -> setParent(nullptr);
-            }else{
-                parent -> setrightchild(RootLeftChild);
-                RootLeftChild -> setParent(parent);
-                root -> setParent(nullptr);
-                root -> setleftchild(nullptr);
-                //must make roots children nullptr
-            }
-        }
+    }
+
+    // Case 2: only right child
+    if (root->get_leftchild() == nullptr) {
+
+        limit* child = root->get_rightchild();
+
+        child->setParent(parent);
+
+        root->setrightchild(nullptr);
+        root->setParent(nullptr);
+
         limit_allocator->release(root);
-        return RootLeftChild;   
-    }
-    if (RootLeftChild == nullptr && RootRightChild != nullptr){
-        
-        if (parent != nullptr){
-            if (parent -> get_leftchild() == root){
-                parent -> setleftchild(RootRightChild);
-                RootRightChild -> setParent(parent);
-                root -> setParent(nullptr); 
-                root -> setrightchild(nullptr);
-            }else{
-                parent -> setrightchild(RootRightChild);
-                RootRightChild -> setParent(parent);
-                root -> setParent(nullptr);
-                root -> setrightchild(nullptr);
-            }
-    }
-    limit_allocator->release(root);
-    return RootRightChild;
-}
-if (RootLeftChild != nullptr && RootRightChild != nullptr){
-    limit* successor = RootRightChild;
 
-    // Find inorder successor
-    while (successor->get_leftchild() != nullptr){
-        successor = successor->get_leftchild();
+        return child;
     }
 
-    limit* successorParent = successor->get_parent();
+    // Case 3: only left child
+    if (root->get_rightchild() == nullptr) {
 
+        limit* child = root->get_leftchild();
 
-    // Successor is not direct right child
-    if (successor != RootRightChild){
-        successorParent->setleftchild(successor->get_rightchild());
+        child->setParent(parent);
 
-        if (successor->get_rightchild() != nullptr)
-            successor->get_rightchild()->setParent(successorParent);
+        root->setleftchild(nullptr);
+        root->setParent(nullptr);
 
-        successor->setrightchild(RootRightChild);
-        RootRightChild->setParent(successor);
+        limit_allocator->release(root);
+
+        return child;
     }
 
+    // ------------------------------------------------
+    // Case 4: two children
+    // ------------------------------------------------
 
-    // Give successor the left subtree
-    successor->setleftchild(RootLeftChild);
-    RootLeftChild->setParent(successor);
+    limit* successor = nullptr;
 
+    limit* newRight =
+        removeMinimum(
+            root->get_rightchild(),
+            successor
+        );
 
-    // Connect successor to parent
-    if (parent == nullptr)
-    {
-        // deleting AVL root
-        successor->setParent(nullptr);
+    limit* leftSubtree = root->get_leftchild();
 
-        if (successor->getbuyorsell()){
-            buytree = successor;
-        }
-        else{
-            selltree = successor;
-    }   }
-    else
-    {
-        successor->setParent(parent);
+    // Successor receives left subtree
+    successor->setleftchild(leftSubtree);
 
-        if (parent->get_leftchild() == root){
-            parent->setleftchild(successor);
-        }
-        else{
-            parent->setrightchild(successor);
-    }   }
+    if (leftSubtree != nullptr) {
+        leftSubtree->setParent(successor);
+    }
 
+    // Successor receives remaining right subtree
+    successor->setrightchild(newRight);
 
-    // Remove old root
+    if (newRight != nullptr) {
+        newRight->setParent(successor);
+    }
+
+    // Connect successor to old parent
+    successor->setParent(parent);
+
+    // Remove old node
     root->setleftchild(nullptr);
     root->setrightchild(nullptr);
     root->setParent(nullptr);
@@ -449,10 +619,44 @@ if (RootLeftChild != nullptr && RootRightChild != nullptr){
     limit_allocator->release(root);
 
     return balanceTree(successor);
-};
-};
-return balanceTree(root);
-};
+}
+
+limit* book::removeMinimum(
+    limit* node,
+    limit*& minimum
+)
+{
+    if (node->get_leftchild() == nullptr) {
+
+        minimum = node;
+
+        limit* rightChild =
+            node->get_rightchild();
+
+        if (rightChild != nullptr) {
+            rightChild->setParent(node->get_parent());
+        }
+
+        node->setrightchild(nullptr);
+        node->setParent(nullptr);
+
+        return rightChild;
+    }
+
+    limit* newLeft =
+        removeMinimum(
+            node->get_leftchild(),
+            minimum
+        );
+
+    node->setleftchild(newLeft);
+
+    if (newLeft != nullptr) {
+        newLeft->setParent(node);
+    }
+
+    return balanceTree(node);
+}
 
 void book::AddStopLimitOrder(int orderId, bool buyOrSell, int shares, int limitPrice, int stopPrice){
     auto executedOrdersCount = 0;
@@ -718,85 +922,159 @@ std::vector<int> book::inOrderTreeHelper(limit* root,std::vector<int>& result){
     return result;
 }
 
-limit* book::balanceTree(limit* Limit){
+limit* book::balanceTree(limit* Limit)
+{
+    if (Limit == nullptr)
+        return nullptr;
+
+    updateHeight(Limit);
+
     int b_factor = get_b(Limit);
-    if (b_factor > 1){
-        if (get_b(Limit -> get_leftchild()) >= 0){
+
+    if (b_factor > 1) {
+
+        if (get_b(Limit->get_leftchild()) >= 0) {
             return LL_rebalance(Limit);
-        }else{
+        }
+        else {
             return LR_rebalance(Limit);
         }
-    }else if (b_factor < -1){
-        if (get_b(Limit -> get_rightchild()) <= 0){
+    }
+
+    if (b_factor < -1) {
+
+        if (get_b(Limit->get_rightchild()) <= 0) {
             return RR_rebalance(Limit);
-        }else{
+        }
+        else {
             return RL_rebalance(Limit);
         }
     }
+
     return Limit;
 }
 
-int book::get_b(limit* Limit){
-    int left = getLeftSideHeight(Limit);
-    int right = getRightSideHeight(Limit);
-    int b_factor = (left - right);
-    return b_factor;
-};
+int book::get_b(limit* Limit)
+{
+    if (Limit == nullptr)
+        return 0;
 
-limit* book::LL_rebalance(limit* Limit){
-    limit* newparent = Limit -> get_leftchild();
-    if (Limit -> get_parent() != nullptr){
-        newparent -> setParent(Limit -> get_parent());
-        if (Limit -> get_parent() -> get_leftchild() == Limit){
-            Limit -> get_parent() -> setleftchild(newparent);
-        }
-         else if (Limit -> get_parent() -> get_rightchild() == Limit){
-        Limit -> get_parent() -> setrightchild(newparent);
-        }
-    }else{
-        newparent -> setParent(nullptr);
-        auto& tree = Limit -> getbuyorsell() ? buytree : selltree;
-        tree = newparent;
-    }if (newparent -> get_rightchild() != nullptr){
-        newparent -> get_rightchild() -> setParent(Limit);
-    }
-    Limit -> setleftchild(newparent -> get_rightchild());
-    newparent -> setrightchild(Limit);
-    Limit -> setParent(newparent);
-    return newparent;
-};//fixed rebalance
-limit* book::RR_rebalance(limit* Limit){
-    limit* newparent = Limit -> get_rightchild();
-    if (Limit -> get_parent() != nullptr){
-        newparent -> setParent(Limit -> get_parent());
-        if (Limit -> get_parent() -> get_leftchild() == Limit){
-            Limit -> get_parent() -> setleftchild(newparent);
-        }
-         else if (Limit -> get_parent() -> get_rightchild() == Limit){
-            Limit -> get_parent() -> setrightchild(newparent);
-        }
-    }else{
-        newparent -> setParent(nullptr);
-        auto& tree = Limit -> getbuyorsell() ? buytree : selltree;
-        tree = newparent;
-    }
-    Limit -> setrightchild(newparent -> get_leftchild());
-    if (newparent -> get_leftchild() != nullptr){
-        newparent -> get_leftchild() -> setParent(Limit);
-    }
-    
-    newparent -> setleftchild(Limit);
-    Limit -> setParent(newparent);
-    return newparent;
-}//fixed rebalance
+    int leftHeight = 0;
+    int rightHeight = 0;
 
-limit* book::LR_rebalance(limit* Limit){
-    RR_rebalance(Limit -> get_leftchild());
+    if (Limit->get_leftchild() != nullptr)
+        leftHeight = Limit->get_leftchild()->getHeight();
+
+    if (Limit->get_rightchild() != nullptr)
+        rightHeight = Limit->get_rightchild()->getHeight();
+
+    return leftHeight - rightHeight;
+}
+
+limit* book::LL_rebalance(limit* Limit)
+{
+    limit* newparent = Limit->get_leftchild();
+    limit* parent = Limit->get_parent();
+
+    if (parent != nullptr) {
+
+        newparent->setParent(parent);
+
+        if (parent->get_leftchild() == Limit) {
+            parent->setleftchild(newparent);
+        }
+        else if (parent->get_rightchild() == Limit) {
+            parent->setrightchild(newparent);
+        }
+    }
+    else {
+
+        newparent->setParent(nullptr);
+
+        auto& tree =
+            Limit->getbuyorsell()
+                ? buytree
+                : selltree;
+
+        tree = newparent;
+    }
+
+    limit* middle = newparent->get_rightchild();
+
+    Limit->setleftchild(middle);
+
+    if (middle != nullptr) {
+        middle->setParent(Limit);
+    }
+
+    newparent->setrightchild(Limit);
+    Limit->setParent(newparent);
+
+    // Update lower node first
+    updateHeight(Limit);
+
+    // Then update new root
+    updateHeight(newparent);
+
+    return newparent;
+}
+
+limit* book::RR_rebalance(limit* Limit)
+{
+    limit* newparent = Limit->get_rightchild();
+    limit* parent = Limit->get_parent();
+
+    if (parent != nullptr) {
+
+        newparent->setParent(parent);
+
+        if (parent->get_leftchild() == Limit) {
+            parent->setleftchild(newparent);
+        }
+        else if (parent->get_rightchild() == Limit) {
+            parent->setrightchild(newparent);
+        }
+    }
+    else {
+
+        newparent->setParent(nullptr);
+
+        auto& tree =
+            Limit->getbuyorsell()
+                ? buytree
+                : selltree;
+
+        tree = newparent;
+    }
+
+    limit* middle = newparent->get_leftchild();
+
+    Limit->setrightchild(middle);
+
+    if (middle != nullptr) {
+        middle->setParent(Limit);
+    }
+
+    newparent->setleftchild(Limit);
+    Limit->setParent(newparent);
+
+    // Update lower node first
+    updateHeight(Limit);
+
+    // Then update new root
+    updateHeight(newparent);
+
+    return newparent;
+}
+
+limit* book::LR_rebalance(limit* Limit)
+{
+    RR_rebalance(Limit->get_leftchild());
     return LL_rebalance(Limit);
 }
 
-limit* book::RL_rebalance(limit* Limit){
-    LL_rebalance(Limit -> get_rightchild());
+limit* book::RL_rebalance(limit* Limit)
+{
+    LL_rebalance(Limit->get_rightchild());
     return RR_rebalance(Limit);
 }
-

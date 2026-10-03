@@ -1,40 +1,69 @@
-
-
 #ifndef LIMIT_HPP
 #define LIMIT_HPP
 
+// Forward declaration.
+// We only use order* inside this class, so the full definition
+// of order is not needed here.
 class order;
 
-class limit{
-    private:
-        order* tailOrder;
-        order* headOrder;
-        int size;
-        int limit_price;
-        int totalshares;
-        limit* leftchild;
-        limit* rightchild;
-        limit* parent;
-        bool buyorsell;
-        
-        friend class order;
+class limit
+{
+    // order::cancel() and order::execute() directly access
+    // private members of limit.
+    friend class order;
 
-    public:
-        limit(int _limit_price, int _size = 0, bool _buyorsell = false, int _totalshares = 0);
-        void setrightchild(limit* rightchild);
-        void setleftchild(limit* leftchild);
-        void setParent(limit* parent);
-        bool getbuyorsell();
-        order* get_headOrder();
-        order* get_tailOrder();
-        limit* get_parent();
-        limit* get_rightchild();
-        limit* get_leftchild();
-        int get_totalshares();
-        int get_limitPrice();
-        int get_size();
-        void order_append(order* order);
-        void partiallyFillTotalVolume(int orderedShares);
+private:
+    order* tailOrder;
+    order* headOrder;
+
+    int size;
+    int limit_price;
+    int totalshares;
+
+    limit* leftchild;
+    limit* rightchild;
+    limit* parent;
+
+    bool buyorsell;
+
+    // Cached AVL height
+    int height;
+
+public:
+    limit(
+        int _limit_price,
+        int _size,
+        bool _buyorsell,
+        int _totalshares
+    );
+
+    // Orders
+    order* get_headOrder();
+    order* get_tailOrder();
+
+    // Tree
+    limit* get_leftchild();
+    limit* get_rightchild();
+    limit* get_parent();
+
+    // Data
+    int get_size();
+    int get_limitPrice();
+    int get_totalshares();
+    bool getbuyorsell();
+
+    // AVL height
+    int getHeight();
+    void setHeight(int h);
+
+    // Tree setters
+    void setrightchild(limit* rightchild);
+    void setleftchild(limit* leftchild);
+    void setParent(limit* parent);
+
+    // Orders
+    void order_append(order* order);
+    void partiallyFillTotalVolume(int orderedShares);
 };
 
 #endif

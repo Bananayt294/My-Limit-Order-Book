@@ -1,9 +1,34 @@
 #include "order.hpp"
 #include "limit.hpp"
 
-limit::limit(int _limit_price, int _size, bool _buyorsell, int _totalshares)
-    : tailOrder{nullptr}, headOrder{nullptr}, size{_size}, limit_price{_limit_price}, totalshares{_totalshares},
-      leftchild{nullptr}, rightchild{nullptr}, parent{nullptr}, buyorsell{_buyorsell} {}
+limit::limit(
+    int _limit_price,
+    int _size,
+    bool _buyorsell,
+    int _totalshares
+)
+    : tailOrder{nullptr},
+      headOrder{nullptr},
+      size{_size},
+      limit_price{_limit_price},
+      totalshares{_totalshares},
+      leftchild{nullptr},
+      rightchild{nullptr},
+      parent{nullptr},
+      buyorsell{_buyorsell},
+      height{1}
+{}
+
+
+int limit::getHeight()
+{
+    return height;
+}
+
+void limit::setHeight(int h)
+{
+    height = h;
+}
 
 order* limit::get_headOrder(){
     return headOrder;

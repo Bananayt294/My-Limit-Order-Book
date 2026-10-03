@@ -78,7 +78,9 @@ class book{
     int get_b(limit* Limit);
     int getRightSideHeight(limit* Limit);
     int getLeftSideHeight(limit* Limit);
- 
+    
+    void updateHeight(limit* Limit);
+    limit* removeMinimum(limit* node, limit*& minimum);
 
     void deleteFromOrderMap(order* Order);
     void partiallyFillOrder(int shares);
@@ -94,6 +96,9 @@ class book{
 
     int stopOrderAsMarketOrder(int orderid , bool buyorsell , int shares , int stopPrice);
     void stopOrderHelper(int orderid , bool buyorsell , int shares);
+
+    void ReduceOrder(int orderId, int shares);
+    void ExecuteOrder(int orderId, int shares);
 };
 
 #endif

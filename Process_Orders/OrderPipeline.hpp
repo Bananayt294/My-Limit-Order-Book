@@ -3,7 +3,7 @@
 
 #include <string>
 #include <unordered_map>
-#include <string_view>cd
+#include <string_view>
 #include <sstream>
 
 class book;
@@ -25,6 +25,8 @@ private:
     void processAddStopLimitOrder(std::istringstream& iss);
     void processCancelStopLimitOrder(std::istringstream& iss);
     void processModifyStopLimitOrder(std::istringstream& iss);
+    void processReduceOrder(std::istringstream& iss);
+    void processExecuteOrder(std::istringstream& iss);
 
 public:
     OrderPipeline(book* b);
