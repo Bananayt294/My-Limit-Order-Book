@@ -63,6 +63,7 @@ void order::cancel(){
 
 void order::execute(){
     if (parent_limit == nullptr) {
+        shares = 0;
         prevOrder = nullptr;
         nextOrder = nullptr;
         return;
@@ -82,6 +83,7 @@ void order::execute(){
     }
     parent_limit->totalshares -= shares;
     parent_limit->size--;
+    shares = 0;
 
     prevOrder = nullptr;
     nextOrder = nullptr;

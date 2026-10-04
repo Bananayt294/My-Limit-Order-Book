@@ -73,9 +73,17 @@ void book::CancelStopLimitOrder(int orderId){
     }
     order* Order = it->second;
     if (Order != nullptr){
-        Order -> cancel();
-        if (Order -> get_parent_limit() -> get_size() == 0){
-            deleteLimit(Order -> get_parent_limit());
+        limit* parentLimit = Order->get_parent_limit();
+
+        Order->cancel();
+
+        if (parentLimit != nullptr && parentLimit->get_size() == 0) {
+            auto stopIt = stopmap.find(parentLimit->get_limitPrice());
+
+            if (stopIt != stopmap.end() && stopIt->second == parentLimit) {
+                stopmap.erase(stopIt);
+                limit_allocator->release(parentLimit);
+            }
         }
         deleteFromOrderMap(Order);
         order_allocator->release(Order);
@@ -102,10 +110,17 @@ void book::CancelStopOrder(int orderid){
     }
     order* Order = it->second;
     if (Order != nullptr){
-        limit* parentLimit= Order->get_parent_limit();
-        Order -> cancel();
-        if (parentLimit -> get_size() == 0){
-            deleteLimit(parentLimit);
+        limit* parentLimit = Order->get_parent_limit();
+
+        Order->cancel();
+
+        if (parentLimit != nullptr && parentLimit->get_size() == 0) {
+            auto stopIt = stopmap.find(parentLimit->get_limitPrice());
+
+            if (stopIt != stopmap.end() && stopIt->second == parentLimit) {
+                stopmap.erase(stopIt);
+                limit_allocator->release(parentLimit);
+            }
         }
         deleteFromOrderMap(Order);
         order_allocator->release(Order);
@@ -113,47 +128,114 @@ void book::CancelStopOrder(int orderid){
 }
 
 void book::ModifyStopLimitOrder(int orderId, int newShares, int newLimitPrice, int newStopPrice){
-    auto executedOrdersCount = 0;
-    auto AVLTreeBalanceCount = 0;
     auto it = order_map.find(orderId);
+
     if (it == order_map.end() || it->second == nullptr) {
         return;
     }
+
     order* Order = it->second;
-    if (Order != nullptr){
-        Order -> cancel();
-        if (Order -> get_parent_limit() -> get_size() == 0){
-            deleteLimit(Order -> get_parent_limit());
+
+    // ------------------------------------------------------------
+    // 1. Find/create the NEW stop level first.
+    // ------------------------------------------------------------
+    limit* newStopLimit = nullptr;
+
+    auto stopIt = stopmap.find(newStopPrice);
+
+    if (stopIt == stopmap.end())
+    {
+        newStopLimit = limit_allocator->allocate(
+            newStopPrice,
+            0,
+            Order->get_buyorsell(),
+            0
+        );
+
+        if (newStopLimit == nullptr) {
+            return;
         }
-        Order -> modifyorder(newShares , newLimitPrice);
-        if (stopmap.find(newStopPrice) == stopmap.end()){
-            addLimit(newStopPrice , Order -> get_buyorsell());
-        }
-        stopmap.at(newStopPrice) -> order_append(Order);
+
+        stopmap.emplace(newStopPrice, newStopLimit);
     }
+    else
+    {
+        newStopLimit = stopIt->second;
+    }
+    limit* previousLimit = Order->get_parent_limit();
+    Order->cancel();
+    if (previousLimit != nullptr &&
+        previousLimit->get_size() == 0 &&
+        previousLimit != newStopLimit)
+    {
+        auto previousStopIt =
+            stopmap.find(previousLimit->get_limitPrice());
+
+        if (previousStopIt != stopmap.end() &&
+            previousStopIt->second == previousLimit)
+        {
+            stopmap.erase(previousStopIt);
+            limit_allocator->release(previousLimit);
+        }
+    }
+    Order->modifyorder(newShares, newLimitPrice);
+    newStopLimit->order_append(Order);
 }
 
-void book::ModifyStopOrder(int orderid , int shares , int stopPrice){
-    auto executedOrdersCount = 0;
-    auto AVLTreeBalanceCount = 0;
+void book::ModifyStopOrder(int orderid, int shares, int stopPrice) {
     auto it = order_map.find(orderid);
+
     if (it == order_map.end() || it->second == nullptr) {
         return;
     }
-    order* Order = it->second;
-    if (Order != nullptr){
-        Order -> cancel();
-        if (Order -> get_parent_limit() -> get_size() == 0){
-            deleteLimit(Order -> get_parent_limit());
-        }
-        Order -> modifyorder(shares , 0);
-        if (stopmap.find(stopPrice) == stopmap.end()){
-            addLimit(stopPrice , Order -> get_buyorsell());
-        }
-        stopmap.at(stopPrice) -> order_append(Order);
-    }
-}
 
+    order* Order = it->second;
+
+    // ------------------------------------------------------------
+    // 1. Find/create the NEW stop level first.
+    // ------------------------------------------------------------
+    limit* newStopLimit = nullptr;
+
+    auto stopIt = stopmap.find(stopPrice);
+
+    if (stopIt == stopmap.end())
+    {
+        newStopLimit = limit_allocator->allocate(
+            stopPrice,
+            0,
+            Order->get_buyorsell(),
+            0
+        );
+
+        if (newStopLimit == nullptr) {
+            return;
+        }
+
+        stopmap.emplace(stopPrice, newStopLimit);
+    }
+    else
+    {
+        newStopLimit = stopIt->second;
+    }
+    limit* previousLimit = Order->get_parent_limit();
+    Order->cancel();
+    if (previousLimit != nullptr &&
+        previousLimit->get_size() == 0 &&
+        previousLimit != newStopLimit)
+    {
+        auto previousStopIt =
+            stopmap.find(previousLimit->get_limitPrice());
+
+        if (previousStopIt != stopmap.end() &&
+            previousStopIt->second == previousLimit)
+        {
+            stopmap.erase(previousStopIt);
+            limit_allocator->release(previousLimit);
+        }
+    }
+    Order->modifyorder(shares, 0);
+    newStopLimit->order_append(Order);
+}
 void book::ModifyLimitOrder(int orderId, int newShares, int newLimit){
     auto it = order_map.find(orderId);
     if (it == order_map.end() || it->second == nullptr) {
@@ -716,50 +798,43 @@ void book::stopLimitOrderToLimitOrder(order* stopLimitOrder, bool buyOrSell){
 };
 
 order* book::getRandomOrder(int key, std::mt19937 gen) const{
-    if (key == 0)
-    {
-        if (limitOrders.size() > 10000)
-        {
-            // Generate a random index within the range of the hash set size
-            std::uniform_int_distribution<> mapDist(0, limitOrders.size() - 1);
-            int randomIndex = mapDist(gen);
+    std::vector<order*> candidates;
 
-            // Access the element at the random index directly
-            auto it = limitOrders.begin();
-            std::advance(it, randomIndex);
-            return *it;
+    for (const auto& [id, currentOrder] : order_map) {
+        if (currentOrder == nullptr) {
+            continue;
         }
-        return nullptr;
-    } else if (key == 1)
-    {
-        if (stopOrders.size() > 500)
-        {
-            // Generate a random index within the range of the hash set size
-            std::uniform_int_distribution<> mapDist(0, stopOrders.size() - 1);
-            int randomIndex = mapDist(gen);
 
-            // Access the element at the random index directly
-            auto it = stopOrders.begin();
-            std::advance(it, randomIndex);
-            return *it;
-        }
-        return nullptr;
-    } else if (key == 2)
-    {
-        if (stopLimitOrders.size() > 500)
-        {
-            // Generate a random index within the range of the hash set size
-            std::uniform_int_distribution<> mapDist(0, stopLimitOrders.size() - 1);
-            int randomIndex = mapDist(gen);
+        auto* parent = currentOrder->get_parent_limit();
+        const bool inStopLevel = parent != nullptr && stopmap.find(parent->get_limitPrice()) != stopmap.end();
 
-            // Access the element at the random index directly
-            auto it = stopLimitOrders.begin();
-            std::advance(it, randomIndex);
-            return *it;
+        switch (key) {
+            case 0:
+                if (!inStopLevel && currentOrder->get_Limit() != 0) {
+                    candidates.push_back(currentOrder);
+                }
+                break;
+            case 1:
+                if (inStopLevel && currentOrder->get_Limit() == 0) {
+                    candidates.push_back(currentOrder);
+                }
+                break;
+            case 2:
+                if (inStopLevel && currentOrder->get_Limit() != 0) {
+                    candidates.push_back(currentOrder);
+                }
+                break;
+            default:
+                return nullptr;
         }
+    }
+
+    if (candidates.empty()) {
         return nullptr;
     }
-    return nullptr;
+
+    std::uniform_int_distribution<> mapDist(0, static_cast<int>(candidates.size()) - 1);
+    return candidates[mapDist(gen)];
 }
 
 void book::CancelLimitOrder(int orderId){
